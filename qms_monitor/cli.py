@@ -63,31 +63,4 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="跳过LLM调用，仅使用本地统计",
     )
-    parser.add_argument(
-        "--llm-base-url",
-        default=os.getenv("QMS_LLM_BASE_URL", "https://api.openai.com/v1"),
-        help="OpenAI兼容接口Base URL",
-    )
-    parser.add_argument(
-        "--llm-model",
-        default=os.getenv("QMS_LLM_MODEL", ""),
-        help="模型名称，默认为环境变量QMS_LLM_MODEL",
-    )
-    parser.add_argument(
-        "--llm-api-key",
-        default=os.getenv("QMS_LLM_API_KEY", ""),
-        help="API Key，默认为环境变量QMS_LLM_API_KEY",
-    )
-    parser.add_argument(
-        "--llm-timeout",
-        type=int,
-        default=int(os.getenv("QMS_LLM_TIMEOUT", "120")),
-        help="LLM请求超时时间（秒）",
-    )
-    parser.add_argument(
-        "--llm-progress-interval",
-        type=int,
-        default=int(os.getenv("QMS_LLM_PROGRESS_INTERVAL", "15")),
-        help="LLM等待进度提示间隔（秒），设为0可关闭",
-    )
     return parser.parse_args()

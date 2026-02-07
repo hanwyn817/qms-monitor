@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from collections import defaultdict
@@ -152,11 +153,11 @@ def main() -> int:
                 report_date=report_date,
                 local_stats=local_stats,
                 overdue_records=overdue_records,
-                base_url=args.llm_base_url,
-                model=args.llm_model,
-                api_key=args.llm_api_key,
-                timeout_seconds=args.llm_timeout,
-                progress_interval_seconds=args.llm_progress_interval,
+                base_url=os.getenv("QMS_LLM_BASE_URL", "https://api.openai.com/v1"),
+                model=os.getenv("QMS_LLM_MODEL", ""),
+                api_key=os.getenv("QMS_LLM_API_KEY", ""),
+                timeout_seconds=int(os.getenv("QMS_LLM_TIMEOUT", "120")),
+                progress_interval_seconds=int(os.getenv("QMS_LLM_PROGRESS_INTERVAL", "15")),
             )
             elapsed = time.time() - llm_start
             print(f"[LLM] 主题[{topic}] 分析完成，用时 {elapsed:.1f}s", file=sys.stderr, flush=True)
