@@ -17,6 +17,8 @@ from .ledger_reader import read_ledger_events
 from .llm_client import call_llm
 from .models import QmsEvent
 from .overdue_excel_exporter import export_overdue_events_excel
+from .pdf_exporter import export_markdown_file_to_pdf
+from .pdf_exporter_latex import export_markdown_file_to_pdf_latex
 from .report_renderer import render_markdown_report
 from .stats import build_event_records, build_local_stats, build_overdue_event_records, build_topic_stats
 
@@ -172,6 +174,7 @@ def main() -> int:
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_path = output_dir / f"qms_report_{timestamp}.md"
+    pdf_path = output_dir / f"qms_report_{timestamp}.pdf"
     detail_path = output_dir / f"qms_report_{timestamp}.json"
     overdue_excel_path = output_dir / f"qms_overdue_events_{timestamp}.xlsx"
 
@@ -193,6 +196,24 @@ def main() -> int:
         skipped_files=skipped_files,
     )
     report_path.write_text(report_text, encoding="utf-8")
+    pdf_exported = False
+    pdf_engine = os.getenv("QMS_PDF_ENGINE", "latex").strip().lower() or "latex"
+    try:
+        if pdf_engine == "reportlab":
+            export_markdown_file_to_pdf(report_path, pdf_path)
+        else:
+            export_markdown_file_to_pdf_latex(report_path, pdf_path)
+        pdf_exported = True
+    except Exception as exc:
+        try:
+            export_markdown_file_to_pdf(report_path, pdf_path)
+            pdf_exported = True
+            fallback_msg = f"PDF导出已回退到reportlab: {exc}"
+            warnings.append(fallback_msg)
+            print(f"[EXPORT] {fallback_msg}", file=sys.stderr, flush=True)
+        except Exception as fallback_exc:
+            warnings.append(f"PDF导出失败: {exc}; 回退失败: {fallback_exc}")
+            print(f"[EXPORT] PDF导出失败: {exc}; 回退失败: {fallback_exc}", file=sys.stderr, flush=True)
 
     detail_payload = {
         "report_date": report_date.isoformat(),
@@ -200,6 +221,7 @@ def main() -> int:
         "processed_files": processed_files,
         "skipped_files": skipped_files,
         "warnings": warnings,
+        "pdf_report": str(pdf_path) if pdf_exported else "",
         "overdue_excel": str(overdue_excel_path) if overdue_excel_exported else "",
         "overdue_event_count": overdue_event_count,
         "topics": topic_results,
@@ -207,6 +229,8 @@ def main() -> int:
     detail_path.write_text(json.dumps(detail_payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"报告已生成: {report_path}")
+    if pdf_exported:
+        print(f"PDF已生成: {pdf_path}")
     print(f"明细已生成: {detail_path}")
     if overdue_excel_exported:
         print(f"超期事件Excel已生成: {overdue_excel_path} (共 {overdue_event_count} 条)")

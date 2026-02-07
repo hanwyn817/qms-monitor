@@ -15,7 +15,7 @@
   - 超期清单
   - 超期按分管 QA、分管 QA 中层降序统计
 - 调用 OpenAI 兼容接口进行模块分析（失败时自动回退本地统计）
-- 输出 Markdown 报告与 JSON 明细
+- 输出 Markdown、PDF 报告与 JSON 明细
 
 ## 环境要求
 
@@ -157,6 +157,7 @@ QMS_CSV_MANIFEST=
 程序在 `outputs/` 下生成：
 
 - `qms_report_YYYYMMDD_HHMMSS.md`：质量体系运行报告
+- `qms_report_YYYYMMDD_HHMMSS.pdf`：由 Markdown 报告导出的 PDF 版本
 - `qms_report_YYYYMMDD_HHMMSS.json`：结构化明细（含告警）
 - `qms_overdue_events_YYYYMMDD_HHMMSS.xlsx`：全部模块的超期事件汇总（单 Sheet，含“质量模块”列）
 
@@ -165,3 +166,16 @@ QMS_CSV_MANIFEST=
 - 项目内置了本地 Excel 读取模块 `qms_monitor/excel_reader.py`，不再依赖外部 Excel 读取包。
 - `csv` 模式会按 `config.xlsx` 的 `row_no` 关联到 `manifest.json` 中的导出文件。
 - 本仓库不在设计阶段主动读取真实质量台账文件；实际运行时按配置执行。
+
+## PDF 排版说明（LaTeX）
+
+程序会优先使用 `pandoc + xelatex` 将 Markdown 报告导出为排版版 PDF；若失败会自动回退到内置 reportlab 渲染。
+
+- 需要本机安装：
+  - `pandoc`
+  - `xelatex`（可通过 TinyTeX / MacTeX 提供）
+- 可选环境变量（`.env`）：
+  - `QMS_PDF_ENGINE`：`latex`（默认）或 `reportlab`
+  - `QMS_LATEX_MAINFONT`
+  - `QMS_LATEX_SANSFONT`
+  - `QMS_LATEX_MONOFONT`

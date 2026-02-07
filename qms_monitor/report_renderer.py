@@ -20,7 +20,6 @@ def render_markdown_report(
     skipped_files: int,
 ) -> str:
     lines: list[str] = []
-    lines.append("# 质量体系运行报告")
     lines.append("")
     lines.append(f"- 报告日期: {report_date.isoformat()}")
     lines.append(f"- 配置文件: {config_path}")
@@ -29,28 +28,19 @@ def render_markdown_report(
     lines.append("")
 
     if warnings:
-        lines.append("## 处理告警")
+        lines.append("# 处理告警")
         for warning in warnings:
             lines.append(f"- {warning}")
         lines.append("")
 
     for topic in sorted(topic_results.keys()):
         item = topic_results[topic]
-        lines.append(f"## 主题：{topic}")
+        lines.append(f"# 主题：{topic}")
 
         yearly_totals = item.get("yearly_totals", [])
-        lines.append("### 各年度起数")
-        if yearly_totals:
-            lines.append("| 年份 | 起数 |")
-            lines.append("|---|---:|")
-            for row in yearly_totals:
-                lines.append(f"| {row.get('year', '')} | {row.get('count', 0)} |")
-        else:
-            lines.append("无数据")
-        lines.append("")
 
         yearly_overdue = item.get("yearly_overdue", [])
-        lines.append("### 各年度超期情况")
+        lines.append("## 各年度超期情况")
         if yearly_overdue:
             lines.append("| 年份 | 起数 | 超期起数 | 超期占比 |")
             lines.append("|---|---:|---:|---:|")
@@ -66,17 +56,15 @@ def render_markdown_report(
         total_count = total.get("count")
         if total_count is None:
             total_count = sum(int(r.get("count", 0) or 0) for r in yearly_totals)
-        lines.append("### 总起数")
+        lines.append("## 总起数和超期情况")
         lines.append(f"- 总起数: {total_count}")
-        lines.append("")
 
         overdue = item.get("overdue", {})
-        lines.append("### 总超期情况")
         lines.append(f"- 总超期起数: {overdue.get('count', 0)}")
         lines.append(f"- 总超期占比: {overdue.get('ratio', 0)}%")
         lines.append("")
 
-        lines.append("### 超期按分管QA统计（降序）")
+        lines.append("## 超期按分管QA统计（降序）")
         qa_rank = item.get("overdue_by_qa", [])
         if qa_rank:
             lines.append("| 分管QA | 起数 |")
@@ -87,7 +75,7 @@ def render_markdown_report(
             lines.append("无可统计数据")
         lines.append("")
 
-        lines.append("### 超期按分管QA中层统计（降序）")
+        lines.append("## 超期按分管QA中层统计（降序）")
         qa_manager_rank = item.get("overdue_by_qa_manager", [])
         if qa_manager_rank:
             lines.append("| 分管QA中层 | 起数 |")
@@ -98,7 +86,7 @@ def render_markdown_report(
             lines.append("无可统计数据（可能配置中缺失分管QA中层列）")
         lines.append("")
 
-        lines.append("### 总结")
+        lines.append("## 总结")
         summary = (item.get("summary") or "").strip()
         lines.append(summary if summary else "无")
         lines.append("")
