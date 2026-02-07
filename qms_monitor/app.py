@@ -202,7 +202,12 @@ def main() -> int:
         if pdf_engine == "reportlab":
             export_markdown_file_to_pdf(report_path, pdf_path)
         else:
-            export_markdown_file_to_pdf_latex(report_path, pdf_path)
+            latex_result = export_markdown_file_to_pdf_latex(report_path, pdf_path)
+            if latex_result.mode == "plain":
+                reason = latex_result.fallback_reason or "增强样式导出失败"
+                fallback_msg = f"PDF已降级为基础LaTeX样式（未应用pandoc_header.tex）: {reason}"
+                warnings.append(fallback_msg)
+                print(f"[EXPORT] {fallback_msg}", file=sys.stderr, flush=True)
         pdf_exported = True
     except Exception as exc:
         try:

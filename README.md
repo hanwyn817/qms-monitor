@@ -140,6 +140,10 @@ QMS_LLM_TIMEOUT=120
 QMS_LLM_PROGRESS_INTERVAL=15
 QMS_INPUT_MODE=excel
 QMS_CSV_MANIFEST=
+QMS_PDF_ENGINE=latex
+QMS_LATEX_MAINFONT=Songti SC
+QMS_LATEX_SANSFONT=PingFang SC
+QMS_LATEX_MONOFONT=Menlo
 ```
 
 支持字段：
@@ -151,6 +155,10 @@ QMS_CSV_MANIFEST=
 - `QMS_LLM_PROGRESS_INTERVAL`
 - `QMS_INPUT_MODE`
 - `QMS_CSV_MANIFEST`
+- `QMS_PDF_ENGINE`（`latex` 或 `reportlab`）
+- `QMS_LATEX_MAINFONT`
+- `QMS_LATEX_SANSFONT`
+- `QMS_LATEX_MONOFONT`
 
 ## 输出文件
 
@@ -169,13 +177,41 @@ QMS_CSV_MANIFEST=
 
 ## PDF 排版说明（LaTeX）
 
-程序会优先使用 `pandoc + xelatex` 将 Markdown 报告导出为排版版 PDF；若失败会自动回退到内置 reportlab 渲染。
+程序会优先使用 `pandoc + xelatex` 将 Markdown 报告导出为排版版 PDF。
+导出链路为：
+
+1. `pandoc + xelatex + qms_monitor/resources/pandoc_header.tex`（增强样式）
+2. 若 1 失败，自动退化为 `pandoc + xelatex`（最小样式）
+3. 若 2 仍失败，自动回退到内置 `reportlab` 渲染
 
 - 需要本机安装：
   - `pandoc`
   - `xelatex`（可通过 TinyTeX / MacTeX 提供）
+- 推荐安装的 TeX 包（用于完整样式）：
+
+```bash
+tlmgr install fancyhdr titlesec caption booktabs xurl fvextra upquote
+```
+
+- 验证包是否可用：
+
+```bash
+kpsewhich fancyhdr.sty
+kpsewhich titlesec.sty
+kpsewhich caption.sty
+kpsewhich upquote.sty
+```
+
+- 推荐字体（macOS）：
+  - `QMS_LATEX_MAINFONT=Songti SC`
+  - `QMS_LATEX_SANSFONT=PingFang SC`
+  - `QMS_LATEX_MONOFONT=Menlo`
+- `pandoc_header.tex` 使用可选包按需加载；若缺包会降级部分样式。
+  其中缺少 `upquote.sty` 时，代码块增强会被关闭；若你看到“未应用 pandoc_header.tex”的告警，请先安装上面的 TeX 包。
 - 可选环境变量（`.env`）：
   - `QMS_PDF_ENGINE`：`latex`（默认）或 `reportlab`
   - `QMS_LATEX_MAINFONT`
   - `QMS_LATEX_SANSFONT`
   - `QMS_LATEX_MONOFONT`
+
+当前模板已加入长段落防溢出策略（中文断行、长 URL 断行、代码行断行），用于避免右侧越界。

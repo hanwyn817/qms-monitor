@@ -1,33 +1,109 @@
-\usepackage{booktabs}
-\usepackage{longtable}
-\usepackage{array}
-\usepackage{caption}
-\usepackage{fancyhdr}
-\usepackage{setspace}
-\usepackage{titlesec}
-\usepackage{xcolor}
+\IfFileExists{booktabs.sty}{\usepackage{booktabs}}{}
+\IfFileExists{longtable.sty}{\usepackage{longtable}}{}
+\IfFileExists{array.sty}{\usepackage{array}}{}
+\IfFileExists{xcolor.sty}{\usepackage{xcolor}}{}
+\IfFileExists{caption.sty}{\usepackage{caption}}{}
+\IfFileExists{fancyhdr.sty}{\usepackage{fancyhdr}}{}
+\IfFileExists{titlesec.sty}{\usepackage{titlesec}}{}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{}
+\newif\ifqmsfvextra
+\qmsfvextrafalse
+\IfFileExists{fvextra.sty}{
+  \IfFileExists{upquote.sty}{
+    \usepackage{upquote}
+    \usepackage{fvextra}
+    \qmsfvextratrue
+  }{}
+}{}
 
-\onehalfspacing
-\setlength{\parindent}{2em}
-\setlength{\parskip}{0.25em}
+\definecolor{qmsblue}{HTML}{0F3D5E}
+\definecolor{qmsink}{HTML}{1F2937}
+\definecolor{qmsmuted}{HTML}{6B7280}
+\definecolor{qmsline}{HTML}{E5E7EB}
 
-\definecolor{qmsblue}{HTML}{1E3A8A}
-\definecolor{qmsgray}{HTML}{374151}
-\definecolor{qmsline}{HTML}{D1D5DB}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\linespread{1.2}
+\setlength{\headheight}{14pt}
+\setlength{\emergencystretch}{6em}
+\setlength{\rightskip}{0pt plus 0.8em}
+\pretolerance=200
+\tolerance=3000
+\hfuzz=1pt
+\hbadness=3000
+\sloppy
 
-\captionsetup{font=small,labelfont=bf}
-\renewcommand{\arraystretch}{1.2}
-\setlength{\LTpre}{0.35em}
-\setlength{\LTpost}{0.7em}
+% Improve Chinese line breaking with XeLaTeX (no extra CJK package required)
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip = 0pt plus 1pt
 
-\titleformat{\section}{\Large\bfseries\color{qmsblue}}{\thesection}{0.8em}{}
-\titleformat{\subsection}{\large\bfseries\color{qmsgray}}{\thesubsection}{0.7em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries\color{qmsgray}}{\thesubsubsection}{0.6em}{}
+\ifdefined\urlstyle
+  \urlstyle{same}
+\fi
+\ifdefined\Urlmuskip
+  \Urlmuskip=0mu plus 2mu
+\fi
+\ifdefined\hypersetup
+  \hypersetup{
+    colorlinks=true,
+    linkcolor=qmsblue,
+    urlcolor=qmsblue,
+    citecolor=qmsblue
+  }
+\fi
 
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{QMS Monitor}
-\fancyhead[R]{\nouppercase{\leftmark}}
-\fancyfoot[C]{\thepage}
-\renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\footrulewidth}{0pt}
+\IfFileExists{caption.sty}{
+  \captionsetup{
+    font=small,
+    labelfont=bf,
+    labelsep=quad
+  }
+}{}
+
+\renewcommand{\arraystretch}{1.25}
+\setlength{\LTpre}{0.4em}
+\setlength{\LTpost}{0.8em}
+
+\IfFileExists{titlesec.sty}{
+  \titleformat{\section}
+    {\Large\bfseries\color{qmsink}}
+    {\thesection}
+    {0.7em}
+    {}
+  \titlespacing*{\section}{0pt}{1.4em}{0.6em}
+
+  \titleformat{\subsection}
+    {\large\bfseries\color{qmsink}}
+    {\thesubsection}
+    {0.6em}
+    {}
+  \titlespacing*{\subsection}{0pt}{1.1em}{0.45em}
+
+  \titleformat{\subsubsection}
+    {\normalsize\bfseries\color{qmsmuted}}
+    {\thesubsubsection}
+    {0.55em}
+    {}
+  \titlespacing*{\subsubsection}{0pt}{0.9em}{0.35em}
+}{}
+
+\IfFileExists{fancyhdr.sty}{
+  \pagestyle{fancy}
+  \fancyhf{}
+  \fancyhead[L]{\color{qmsmuted}\footnotesize 质量体系运行报告}
+  \fancyhead[R]{\color{qmsmuted}\footnotesize QMS Monitor}
+  \fancyfoot[C]{\color{qmsmuted}\footnotesize \thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+  \renewcommand{\headrule}{\hbox to\headwidth{\color{qmsline}\leaders\hrule height \headrulewidth\hfill}}
+  \renewcommand{\footrulewidth}{0pt}
+}{}
+
+% Avoid code block overflow on narrow pages
+\ifqmsfvextra
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+    breaklines,
+    breakanywhere=true,
+    commandchars=\\\{\},
+    fontsize=\small
+  }
+\fi

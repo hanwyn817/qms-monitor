@@ -85,7 +85,7 @@ def call_llm(
                     "input_stats": strip_source_fields(local_stats),
                     "output_schema": {"summary": "string"},
                     "requirements": [
-                        "总结需覆盖超期项目的总体态势、主要风险、重点关注项",
+                        "简要总结需覆盖超期项目的总体态势、主要风险、重点关注项",
                         "基于超期项目明细进行分析，聚焦问题根源和改进方向",
                         "优先以input_stats中的超期统计值作为结论依据",
                     ],
