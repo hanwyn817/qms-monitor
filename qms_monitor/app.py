@@ -17,7 +17,7 @@ from .llm_client import call_llm
 from .models import QmsEvent
 from .overdue_excel_exporter import export_overdue_events_excel
 from .report_renderer import render_markdown_report
-from .stats import build_event_records, build_local_stats
+from .stats import build_event_records, build_local_stats, build_overdue_event_records, build_topic_stats
 
 
 def main() -> int:
@@ -126,23 +126,32 @@ def main() -> int:
                 except Exception:
                     pass
 
-    module_results: dict[str, dict[str, Any]] = {}
+    module_local_results: dict[str, dict[str, Any]] = {}
     for module, events in grouped.items():
-        local_stats = build_local_stats(module, events, report_date, open_status_rules)
-        records = build_event_records(events, open_status_rules)
+        module_local_results[module] = build_local_stats(module, events, report_date, open_status_rules)
+
+    topic_grouped: dict[str, list[QmsEvent]] = defaultdict(list)
+    for events in grouped.values():
+        for event in events:
+            topic_grouped[(event.topic or "").strip() or "未分类"].append(event)
+
+    topic_results: dict[str, dict[str, Any]] = {}
+    for topic, events in topic_grouped.items():
+        local_stats = build_topic_stats(topic, events, report_date, open_status_rules)
+        overdue_records = build_overdue_event_records(events, report_date, open_status_rules)
 
         if args.skip_llm:
-            module_results[module] = local_stats
+            topic_results[topic] = local_stats
             continue
 
         try:
             llm_start = time.time()
-            print(f"[LLM] 开始分析模块[{module}] ...", file=sys.stderr, flush=True)
+            print(f"[LLM] 开始分析主题[{topic}] ...", file=sys.stderr, flush=True)
             llm_stats = call_llm(
-                module=module,
+                topic=topic,
                 report_date=report_date,
                 local_stats=local_stats,
-                event_records=records,
+                overdue_records=overdue_records,
                 base_url=args.llm_base_url,
                 model=args.llm_model,
                 api_key=args.llm_api_key,
@@ -150,12 +159,12 @@ def main() -> int:
                 progress_interval_seconds=args.llm_progress_interval,
             )
             elapsed = time.time() - llm_start
-            print(f"[LLM] 模块[{module}] 分析完成，用时 {elapsed:.1f}s", file=sys.stderr, flush=True)
-            module_results[module] = llm_stats
+            print(f"[LLM] 主题[{topic}] 分析完成，用时 {elapsed:.1f}s", file=sys.stderr, flush=True)
+            topic_results[topic] = llm_stats
         except Exception as exc:
-            warnings.append(f"模块[{module}] LLM分析失败，已回退本地统计: {exc}")
-            print(f"[LLM] 模块[{module}] 分析失败: {exc}", file=sys.stderr, flush=True)
-            module_results[module] = local_stats
+            warnings.append(f"主题[{topic}] LLM分析失败，已回退本地统计: {exc}")
+            print(f"[LLM] 主题[{topic}] 分析失败: {exc}", file=sys.stderr, flush=True)
+            topic_results[topic] = local_stats
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -168,7 +177,7 @@ def main() -> int:
     overdue_event_count = 0
     overdue_excel_exported = False
     try:
-        overdue_event_count = export_overdue_events_excel(overdue_excel_path, module_results)
+        overdue_event_count = export_overdue_events_excel(overdue_excel_path, module_local_results)
         overdue_excel_exported = True
     except Exception as exc:
         warnings.append(f"超期事件Excel导出失败: {exc}")
@@ -177,7 +186,7 @@ def main() -> int:
     report_text = render_markdown_report(
         report_date=report_date,
         config_path=config_path,
-        module_results=module_results,
+        topic_results=topic_results,
         warnings=warnings,
         processed_files=processed_files,
         skipped_files=skipped_files,
@@ -192,7 +201,7 @@ def main() -> int:
         "warnings": warnings,
         "overdue_excel": str(overdue_excel_path) if overdue_excel_exported else "",
         "overdue_event_count": overdue_event_count,
-        "modules": module_results,
+        "topics": topic_results,
     }
     detail_path.write_text(json.dumps(detail_payload, ensure_ascii=False, indent=2), encoding="utf-8")
 

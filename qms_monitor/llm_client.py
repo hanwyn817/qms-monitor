@@ -47,10 +47,10 @@ def extract_json_object(text: str) -> dict[str, Any]:
 
 
 def call_llm(
-    module: str,
+    topic: str,
     report_date: date,
     local_stats: dict[str, Any],
-    event_records: list[dict[str, Any]],
+    overdue_records: list[dict[str, Any]],
     base_url: str,
     model: str,
     api_key: str,
@@ -78,27 +78,16 @@ def call_llm(
             "role": "user",
             "content": json.dumps(
                 {
-                    "task": "根据输入生成模块分析结果",
+                    "task": "根据超期项目统计生成主题分析总结",
                     "report_date": report_date.isoformat(),
-                    "module": module,
-                    "records": strip_source_fields(event_records),
+                    "topic": topic,
+                    "overdue_records": strip_source_fields(overdue_records),
                     "input_stats": strip_source_fields(local_stats),
-                    "output_schema": {
-                        "module": "string",
-                        "yearly_totals": [{"year": "string", "count": "number"}],
-                        "overdue": {
-                            "count": "number",
-                            "ratio": "number",
-                        },
-                        "overdue_by_qa": [{"name": "string", "count": "number"}],
-                        "overdue_by_qa_manager": [{"name": "string", "count": "number"}],
-                        "summary": "string",
-                    },
+                    "output_schema": {"summary": "string"},
                     "requirements": [
-                        "yearly_totals必须覆盖所有出现的年份",
-                        "overdue.ratio使用百分比数值，例如12.5表示12.5%",
-                        "overdue_by_qa和overdue_by_qa_manager按count降序",
-                        "如果缺失分管QA中层数据，overdue_by_qa_manager可返回空数组",
+                        "总结需覆盖超期项目的总体态势、主要风险、重点关注项",
+                        "基于超期项目明细进行分析，聚焦问题根源和改进方向",
+                        "优先以input_stats中的超期统计值作为结论依据",
                     ],
                 },
                 ensure_ascii=False,
@@ -128,7 +117,7 @@ def call_llm(
         def heartbeat() -> None:
             while not stop_event.wait(progress_interval_seconds):
                 waited = int(time.time() - start_ts)
-                print(f"[LLM] 模块[{module}] 调用中，已等待 {waited}s ...", file=sys.stderr, flush=True)
+                print(f"[LLM] 主题[{topic}] 调用中，已等待 {waited}s ...", file=sys.stderr, flush=True)
 
         thread = threading.Thread(target=heartbeat, daemon=True)
         thread.start()
@@ -150,18 +139,10 @@ def call_llm(
 
     content = completion.choices[0].message.content or ""
     result = extract_json_object(content)
-
-    result.setdefault("module", module)
-    result.setdefault("yearly_totals", local_stats.get("yearly_totals", []))
-    local_overdue = local_stats.get("overdue", {})
-    result_overdue = result.get("overdue")
-    if not isinstance(result_overdue, dict):
-        result_overdue = {}
-    result_overdue.setdefault("count", local_overdue.get("count", 0))
-    result_overdue.setdefault("ratio", local_overdue.get("ratio", 0.0))
-    # 超期清单始终以本地统计为准，不依赖LLM输出。
-    result_overdue["items"] = local_overdue.get("items", [])
-    result["overdue"] = result_overdue
-    result.setdefault("overdue_by_qa", local_stats.get("overdue_by_qa", []))
-    result.setdefault("overdue_by_qa_manager", local_stats.get("overdue_by_qa_manager", []))
-    return result
+    merged = dict(local_stats)
+    summary = str(result.get("summary", "")).strip()
+    if summary:
+        merged["summary"] = summary
+    else:
+        merged.setdefault("summary", "")
+    return merged
