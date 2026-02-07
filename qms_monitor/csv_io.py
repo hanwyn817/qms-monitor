@@ -119,7 +119,33 @@ def _config_from_dict(raw: dict[str, Any]) -> LedgerConfig | None:
     )
 
 
-def load_csv_manifest_bundle(path: Path) -> tuple[list[LedgerConfig], dict[int, Path], list[str]]:
+def _parse_open_status_rules(raw: Any, warnings: list[str]) -> dict[str, str]:
+    rules: dict[str, str] = {}
+
+    if isinstance(raw, dict):
+        for module, status in raw.items():
+            module_key = str(module).strip()
+            status_value = str(status).strip()
+            if module_key and status_value:
+                rules[module_key] = status_value
+        return rules
+
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            module = str(item.get("module", "")).strip()
+            open_status = str(item.get("open_status", "")).strip()
+            if module and open_status:
+                rules[module] = open_status
+        return rules
+
+    if raw is not None:
+        warnings.append("manifest中的open_status_rules格式无效，已忽略")
+    return rules
+
+
+def load_csv_manifest_bundle(path: Path) -> tuple[list[LedgerConfig], dict[int, Path], dict[str, str], list[str]]:
     warnings: list[str] = []
 
     try:
@@ -133,6 +159,7 @@ def load_csv_manifest_bundle(path: Path) -> tuple[list[LedgerConfig], dict[int, 
     if not isinstance(items, list):
         raise RuntimeError("manifest缺少items数组")
 
+    open_status_rules = _parse_open_status_rules(payload.get("open_status_rules"), warnings)
     config_map: dict[int, LedgerConfig] = {}
     csv_map: dict[int, Path] = {}
     for item in items:
@@ -169,4 +196,4 @@ def load_csv_manifest_bundle(path: Path) -> tuple[list[LedgerConfig], dict[int, 
         csv_map[row_no] = resolved
 
     configs = [config_map[row_no] for row_no in sorted(config_map.keys())]
-    return configs, csv_map, warnings
+    return configs, csv_map, open_status_rules, warnings

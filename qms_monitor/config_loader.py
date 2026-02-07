@@ -66,3 +66,45 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
     if not configs:
         raise RuntimeError("配置文件中没有可用配置")
     return configs, warnings
+
+
+def load_open_status_rules(config_path: Path) -> tuple[dict[str, str], list[str]]:
+    warnings: list[str] = []
+    rules: dict[str, str] = {}
+
+    result = read_excel_document(str(config_path), sheet="open_status_rules")
+    if not result.ok:
+        warnings.append("未找到open_status_rules配置表，已回退默认状态判定逻辑")
+        return rules, warnings
+
+    rows = parse_tabular_text(result.text)
+    if not rows:
+        warnings.append("open_status_rules为空，已回退默认状态判定逻辑")
+        return rules, warnings
+
+    header = [cell.strip() for cell in rows[0]]
+
+    def find_col(candidates: list[str]) -> int | None:
+        for idx, name in enumerate(header):
+            if name in candidates:
+                return idx
+        return None
+
+    module_idx = find_col(["模块", "质量模块", "module"])
+    open_status_idx = find_col(["open状态值", "open_status", "open", "未完成状态"])
+
+    if module_idx is None or open_status_idx is None:
+        warnings.append("open_status_rules表头缺少[模块/open状态值]，已回退默认状态判定逻辑")
+        return {}, warnings
+
+    for row_no, row in enumerate(rows[1:], start=2):
+        module = row[module_idx].strip() if module_idx < len(row) else ""
+        open_status = row[open_status_idx].strip() if open_status_idx < len(row) else ""
+        if not module or not open_status:
+            continue
+        rules[module] = open_status
+
+    if not rules:
+        warnings.append("open_status_rules未配置有效规则，已回退默认状态判定逻辑")
+
+    return rules, warnings

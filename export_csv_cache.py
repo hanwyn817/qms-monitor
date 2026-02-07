@@ -18,13 +18,52 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def resolve_config_path(raw_path: str) -> tuple[Path | None, list[Path]]:
+    candidates: list[Path] = []
+    entered = Path(raw_path).expanduser()
+
+    if entered.is_absolute():
+        candidates.append(entered)
+    else:
+        cwd = Path.cwd()
+        project_root = Path(__file__).resolve().parent
+        candidates.append(cwd / entered)
+        if (project_root / entered) not in candidates:
+            candidates.append(project_root / entered)
+
+    seen: set[str] = set()
+    deduped: list[Path] = []
+    for candidate in candidates:
+        key = str(candidate.resolve(strict=False))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(candidate)
+
+    for candidate in deduped:
+        if candidate.exists() and candidate.is_file():
+            return candidate, deduped
+    return None, deduped
+
+
 def main() -> int:
     args = parse_args()
-    config_path = Path(args.config)
+    config_path, tried_paths = resolve_config_path(args.config)
     output_dir = Path(args.output_dir)
 
-    if not config_path.exists():
-        print(f"配置文件不存在: {config_path}", file=sys.stderr)
+    if config_path is None:
+        print("配置文件不存在。", file=sys.stderr)
+        print(f"当前工作目录: {Path.cwd()}", file=sys.stderr)
+        print("已尝试路径:", file=sys.stderr)
+        for path in tried_paths:
+            print(f"- {path}", file=sys.stderr)
+
+        project_root = Path(__file__).resolve().parent
+        suggestions = sorted(project_root.glob("config*.xls*"))
+        if suggestions:
+            print("项目目录下发现以下相似文件:", file=sys.stderr)
+            for file in suggestions:
+                print(f"- {file}", file=sys.stderr)
         return 1
 
     try:

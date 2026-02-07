@@ -84,4 +84,10 @@ def parse_args() -> argparse.Namespace:
         default=int(os.getenv("QMS_LLM_TIMEOUT", "120")),
         help="LLM请求超时时间（秒）",
     )
+    parser.add_argument(
+        "--llm-progress-interval",
+        type=int,
+        default=int(os.getenv("QMS_LLM_PROGRESS_INTERVAL", "15")),
+        help="LLM等待进度提示间隔（秒），设为0可关闭",
+    )
     return parser.parse_args()

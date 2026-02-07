@@ -3,6 +3,7 @@ from __future__ import annotations
 import platform
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional, Tuple, Union
 
 
@@ -66,6 +67,14 @@ def _values_to_delimited_text(values: Any, sep: str = "\t", row_sep: str = "\n")
         else:
             lines.append(_safe_str(row))
     return row_sep.join(lines)
+
+
+def _normalize_excel_path(path: str) -> str:
+    raw = Path(path).expanduser()
+    try:
+        return str(raw.resolve(strict=False))
+    except Exception:
+        return str(raw)
 
 
 @dataclass
@@ -174,11 +183,12 @@ def read_excel_document(
 ) -> OfficeReadResult:
     t0 = time.time()
     workbook = None
+    excel_path = _normalize_excel_path(path)
 
     try:
         with ExcelSession(visible=visible) as excel:
             open_kwargs = dict(
-                Filename=path,
+                Filename=excel_path,
                 ReadOnly=True,
                 UpdateLinks=0,
                 IgnoreReadOnlyRecommended=True,
@@ -219,7 +229,7 @@ def read_excel_document(
             return OfficeReadResult(
                 ok=True,
                 app="excel",
-                path=path,
+                path=excel_path,
                 elapsed_ms=elapsed_ms,
                 text=text,
                 char_count=len(text),
@@ -235,7 +245,7 @@ def read_excel_document(
         return OfficeReadResult(
             ok=False,
             app="excel",
-            path=path,
+            path=excel_path,
             elapsed_ms=elapsed_ms,
             error_type=type(exc).__name__,
             error_message=_safe_str(exc),
@@ -313,10 +323,11 @@ class ExcelBatchReader:
     ) -> tuple[bool, Any, str, Optional[str], Optional[int], Optional[int], Optional[str]]:
         self._require_open()
         workbook = None
+        excel_path = _normalize_excel_path(path)
 
         try:
             workbook = self.excel.Workbooks.Open(
-                Filename=path,
+                Filename=excel_path,
                 ReadOnly=True,
                 UpdateLinks=0,
                 IgnoreReadOnlyRecommended=True,

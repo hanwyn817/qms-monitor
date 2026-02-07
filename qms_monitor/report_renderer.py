@@ -58,11 +58,11 @@ def render_markdown_report(
         overdue_items = overdue.get("items", [])
         if overdue_items:
             lines.append("#### 超期清单")
-            lines.append("| 年份 | 编号 | 内容 | 计划完成日期 | 状态 | 分管QA | 分管QA中层 | 来源 |")
-            lines.append("|---|---|---|---|---|---|---|---|")
+            lines.append("| 年份 | 编号 | 内容 | 计划完成日期 | 状态 | 分管QA | 分管QA中层 |")
+            lines.append("|---|---|---|---|---|---|---|")
             for row in overdue_items:
                 lines.append(
-                    "| {year} | {event_id} | {content} | {planned_date} | {status} | {qa} | {qa_manager} | {source} |".format(
+                    "| {year} | {event_id} | {content} | {planned_date} | {status} | {qa} | {qa_manager} |".format(
                         year=row.get("year", ""),
                         event_id=safe_md_cell(row.get("event_id", "")),
                         content=safe_md_cell(row.get("content", "")),
@@ -70,7 +70,6 @@ def render_markdown_report(
                         status=safe_md_cell(row.get("status", "")),
                         qa=safe_md_cell(row.get("qa", "")),
                         qa_manager=safe_md_cell(row.get("qa_manager", "")),
-                        source=safe_md_cell(row.get("source", "")),
                     )
                 )
         else:

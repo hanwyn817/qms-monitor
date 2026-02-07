@@ -15,14 +15,28 @@ def is_closed(status: str) -> bool:
     return any(k.lower() in s for k in CLOSED_STATUS_KEYWORDS)
 
 
-def build_local_stats(module: str, events: list[QmsEvent], report_date: date) -> dict[str, Any]:
+def is_open_status(module: str, status: str, open_status_rules: dict[str, str]) -> bool:
+    status_value = (status or "").strip()
+    open_status = open_status_rules.get(module)
+    if open_status is not None:
+        return status_value == open_status
+    return not is_closed(status_value)
+
+
+def build_local_stats(
+    module: str,
+    events: list[QmsEvent],
+    report_date: date,
+    open_status_rules: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    rules = open_status_rules or {}
     yearly_counter: Counter[str] = Counter()
     overdue_items: list[dict[str, Any]] = []
 
     for event in events:
         yearly_counter[event.year] += 1
 
-        if event.planned_date and event.planned_date < report_date and not is_closed(event.status):
+        if event.planned_date and event.planned_date < report_date and is_open_status(module, event.status, rules):
             overdue_items.append(
                 {
                     "year": event.year,
@@ -65,9 +79,14 @@ def build_local_stats(module: str, events: list[QmsEvent], report_date: date) ->
     }
 
 
-def build_event_records(events: list[QmsEvent]) -> list[dict[str, Any]]:
+def build_event_records(
+    events: list[QmsEvent],
+    open_status_rules: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    rules = open_status_rules or {}
     records: list[dict[str, Any]] = []
     for event in events:
+        is_open = is_open_status(event.module, event.status, rules)
         records.append(
             {
                 "year": event.year,
@@ -80,7 +99,7 @@ def build_event_records(events: list[QmsEvent]) -> list[dict[str, Any]]:
                 "owner": event.owner,
                 "qa": event.qa,
                 "qa_manager": event.qa_manager,
-                "is_closed_by_status": is_closed(event.status),
+                "status_semantic": "open" if is_open else "completed",
                 "source_file": event.source_file,
                 "source_sheet": event.source_sheet,
                 "source_row": event.row_index,

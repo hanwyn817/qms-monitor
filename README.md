@@ -56,6 +56,24 @@ uv sync
 - 若 `I` 列缺失或具体行计划日期为空，默认计划日期 = 发起日期 + 1 个月。
 - 若路径不可读或文件读取失败，记录告警并跳过该文件，继续处理后续文件。
 - 若缺失分管 QA 中层列，相关统计自动跳过。
+- 可选新增 `open_status_rules` sheet（推荐）：按模块定义“未完成(open)状态值”。
+
+`open_status_rules` sheet 推荐列：
+
+- `模块`
+- `open状态值`
+
+示例：
+
+| 模块 | open状态值 |
+|---|---|
+| OOS | 调查中 |
+| 变更 | 审核中 |
+
+判定逻辑：
+
+- 若模块配置了 `open状态值`：仅当状态值完全相等时视为 `open`，其他状态均视为完成。
+- 若模块未配置：回退默认状态判定逻辑（并在报告中告警）。
 
 ## 运行方式
 
@@ -67,10 +85,19 @@ uv run python export_csv_cache.py \
   --output-dir artifacts/csv_cache
 ```
 
+如果提示找不到 `config.xlsx`：
+
+- 请确认当前目录确实是项目根目录。
+- Windows 资源管理器默认隐藏扩展名，实际文件可能是 `config.xlsx.xlsx`。
+- 可直接用绝对路径，例如 `--config D:\\qms-monitor\\config.xlsx`。
+- 脚本会打印“已尝试路径”和“相似文件”用于排查。
+
 导出后会生成：
 
 - `artifacts/csv_cache/rows/*.csv`
 - `artifacts/csv_cache/manifest.json`
+
+`manifest.json` 会包含 `open_status_rules`，保证在 macOS 的 `csv` 模式下无需再读取 Excel 也能复用同样的状态判定规则。
 
 ### 2) 常规 Excel 模式（Windows）
 
@@ -103,6 +130,7 @@ uv run python main.py \
 - `--llm-model`：模型名（也可通过环境变量设置）
 - `--llm-api-key`：API Key（也可通过环境变量设置）
 - `--llm-timeout`：请求超时秒数
+- `--llm-progress-interval`：LLM等待进度提示间隔（秒，`0` 为关闭）
 
 ## LLM 环境变量文件（推荐）
 
@@ -120,6 +148,7 @@ QMS_LLM_BASE_URL=https://api.openai.com/v1
 QMS_LLM_MODEL=gpt-4o-mini
 QMS_LLM_API_KEY=<YOUR_API_KEY>
 QMS_LLM_TIMEOUT=120
+QMS_LLM_PROGRESS_INTERVAL=15
 QMS_INPUT_MODE=excel
 QMS_CSV_MANIFEST=
 ```
@@ -130,6 +159,7 @@ QMS_CSV_MANIFEST=
 - `QMS_LLM_MODEL`
 - `QMS_LLM_API_KEY`
 - `QMS_LLM_TIMEOUT`
+- `QMS_LLM_PROGRESS_INTERVAL`
 - `QMS_INPUT_MODE`
 - `QMS_CSV_MANIFEST`
 
@@ -139,6 +169,7 @@ QMS_CSV_MANIFEST=
 
 - `qms_report_YYYYMMDD_HHMMSS.md`：质量体系运行报告
 - `qms_report_YYYYMMDD_HHMMSS.json`：结构化明细（含告警）
+- `qms_overdue_events_YYYYMMDD_HHMMSS.xlsx`：全部模块的超期事件汇总（单 Sheet，含“质量模块”列）
 
 ## 注意事项
 
