@@ -118,13 +118,10 @@ uv run python main.py \
 - `--input-mode`：`excel` 或 `csv`
 - `--csv-manifest`：`csv` 模式下使用的 manifest 路径
 - `--skip-llm`：跳过 LLM 调用，仅做本地统计
-- `--llm-base-url`：OpenAI 兼容接口地址（默认 `https://api.openai.com/v1`）
-- `--llm-model`：模型名（也可通过环境变量设置）
-- `--llm-api-key`：API Key（也可通过环境变量设置）
-- `--llm-timeout`：请求超时秒数
-- `--llm-progress-interval`：LLM等待进度提示间隔（秒，`0` 为关闭）
 
-## LLM 环境变量文件（推荐）
+## LLM 配置
+
+LLM 配置**必须通过 `.env` 文件设置**，不再支持命令行参数。
 
 程序启动时会自动读取项目根目录下的 `.env` 文件。
 你可以先复制模板：
