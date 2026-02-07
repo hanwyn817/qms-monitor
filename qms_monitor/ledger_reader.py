@@ -121,6 +121,7 @@ def read_ledger_events(
 
         events.append(
             QmsEvent(
+                topic=cfg.topic,
                 module=cfg.module,
                 year=cfg.year,
                 event_id=event_id,

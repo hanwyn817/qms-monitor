@@ -7,6 +7,7 @@ from datetime import date
 @dataclass
 class LedgerConfig:
     row_no: int
+    topic: str
     module: str
     year: str
     file_path: str
@@ -26,6 +27,7 @@ class LedgerConfig:
 
 @dataclass
 class QmsEvent:
+    topic: str
     module: str
     year: str
     event_id: str

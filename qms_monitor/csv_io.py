@@ -110,6 +110,7 @@ def _config_from_dict(raw: dict[str, Any]) -> LedgerConfig | None:
 
     return LedgerConfig(
         row_no=row_no,
+        topic=str(raw.get("topic", "")).strip(),
         module=str(raw.get("module", "")).strip(),
         year=str(raw.get("year", "")).strip(),
         file_path=str(raw.get("file_path", "")).strip(),

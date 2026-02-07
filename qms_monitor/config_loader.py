@@ -37,17 +37,18 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
     for i, row in enumerate(rows[1:], start=2):
         row_padded = row + [""] * max(0, HEADER_LEN - len(row))
 
-        module = row_padded[1].strip()
-        year = parse_year(row_padded[2])
-        file_path = row_padded[3].strip()
-        sheet_name = row_padded[4].strip()
+        topic = row_padded[1].strip()
+        module = row_padded[2].strip()
+        year = parse_year(row_padded[3])
+        file_path = row_padded[4].strip()
+        sheet_name = row_padded[5].strip()
 
         if not module and not file_path:
             continue
 
-        id_col = col_to_index(row_padded[5])
-        content_col = col_to_index(row_padded[6])
-        initiated_col = col_to_index(row_padded[7])
+        id_col = col_to_index(row_padded[6])
+        content_col = col_to_index(row_padded[7])
+        initiated_col = col_to_index(row_padded[8])
 
         if not module:
             warnings.append(f"config第{i}行缺失质量模块，已跳过")
@@ -56,12 +57,13 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
             warnings.append(f"config第{i}行缺失文件路径，已跳过: 模块={module}")
             continue
         if id_col is None or content_col is None or initiated_col is None:
-            warnings.append(f"config第{i}行核心列(F/G/H)缺失或非法，已跳过: 模块={module}")
+            warnings.append(f"config第{i}行核心列(G/H/I)缺失或非法，已跳过: 模块={module}")
             continue
 
         configs.append(
             LedgerConfig(
                 row_no=i,
+                topic=topic,
                 module=module,
                 year=year,
                 file_path=file_path,
@@ -69,14 +71,14 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
                 id_col=id_col,
                 content_col=content_col,
                 initiated_col=initiated_col,
-                planned_col=col_to_index(row_padded[8]),
-                status_col=col_to_index(row_padded[9]),
-                owner_dept_col=col_to_index(row_padded[10]),
-                owner_col=col_to_index(row_padded[11]),
-                qa_col=col_to_index(row_padded[12]),
-                qa_manager_col=col_to_index(row_padded[13]),
-                open_status_value=row_padded[14].strip(),
-                data_start_row=_parse_data_start_row(row_padded[15], i, module, warnings),
+                planned_col=col_to_index(row_padded[9]),
+                status_col=col_to_index(row_padded[10]),
+                owner_dept_col=col_to_index(row_padded[11]),
+                owner_col=col_to_index(row_padded[12]),
+                qa_col=col_to_index(row_padded[13]),
+                qa_manager_col=col_to_index(row_padded[14]),
+                open_status_value=row_padded[15].strip(),
+                data_start_row=_parse_data_start_row(row_padded[16], i, module, warnings),
             )
         )
 

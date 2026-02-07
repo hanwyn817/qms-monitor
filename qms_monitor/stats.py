@@ -31,6 +31,7 @@ def build_local_stats(
         if event.planned_date and event.planned_date < report_date and is_open_status(module, event.status, rules):
             overdue_items.append(
                 {
+                    "topic": event.topic,
                     "year": event.year,
                     "event_id": event.event_id,
                     "content": event.content,
@@ -83,6 +84,7 @@ def build_event_records(
         is_open = is_open_status(event.module, event.status, rules)
         records.append(
             {
+                "topic": event.topic,
                 "year": event.year,
                 "event_id": event.event_id,
                 "content": event.content,

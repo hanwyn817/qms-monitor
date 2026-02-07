@@ -6,6 +6,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 
 HEADERS = [
+    "主题",
     "质量模块",
     "年份",
     "编号",
@@ -77,6 +78,7 @@ def _collect_overdue_rows(module_results: dict[str, dict[str, Any]]) -> list[dic
                 continue
             rows.append(
                 {
+                    "主题": str(item.get("topic", "") or ""),
                     "质量模块": module,
                     "年份": str(item.get("year", "") or ""),
                     "编号": str(item.get("event_id", "") or ""),
