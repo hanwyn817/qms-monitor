@@ -20,6 +20,8 @@ class LedgerConfig:
     owner_col: int | None = None
     qa_col: int | None = None
     qa_manager_col: int | None = None
+    open_status_value: str = ""
+    data_start_row: int = 2
 
 
 @dataclass

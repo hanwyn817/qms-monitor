@@ -13,6 +13,8 @@ HEADERS = [
     "发起日期",
     "计划完成日期",
     "状态",
+    "责任部门",
+    "责任人",
     "分管QA",
     "分管QA中层",
 ]
@@ -82,6 +84,8 @@ def _collect_overdue_rows(module_results: dict[str, dict[str, Any]]) -> list[dic
                     "发起日期": str(item.get("initiated_date", "") or ""),
                     "计划完成日期": str(item.get("planned_date", "") or ""),
                     "状态": str(item.get("status", "") or ""),
+                    "责任部门": str(item.get("owner_dept", "") or ""),
+                    "责任人": str(item.get("owner", "") or ""),
                     "分管QA": str(item.get("qa", "") or ""),
                     "分管QA中层": str(item.get("qa_manager", "") or ""),
                 }

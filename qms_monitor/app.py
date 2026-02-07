@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .cli import parse_args
-from .config_loader import load_config, load_open_status_rules
+from .config_loader import build_open_status_rules, load_config
 from .csv_io import load_csv_manifest_bundle, read_csv_rows
 from .excel_reader import ExcelBatchReader
 from .ledger_reader import read_ledger_events
@@ -62,9 +62,7 @@ def main() -> int:
             try:
                 configs, config_warnings = load_config(config_path)
                 warnings.extend(config_warnings)
-                rules, rule_warnings = load_open_status_rules(config_path)
-                open_status_rules = rules
-                warnings.extend(rule_warnings)
+                open_status_rules = build_open_status_rules(configs)
             except Exception as exc:
                 print(f"读取配置失败: {exc}", file=sys.stderr)
                 return 1
@@ -75,9 +73,7 @@ def main() -> int:
         try:
             configs, config_warnings = load_config(config_path)
             warnings.extend(config_warnings)
-            rules, rule_warnings = load_open_status_rules(config_path)
-            open_status_rules = rules
-            warnings.extend(rule_warnings)
+            open_status_rules = build_open_status_rules(configs)
         except Exception as exc:
             print(f"读取配置失败: {exc}", file=sys.stderr)
             return 1
@@ -132,8 +128,6 @@ def main() -> int:
 
     module_results: dict[str, dict[str, Any]] = {}
     for module, events in grouped.items():
-        if open_status_rules and module not in open_status_rules:
-            warnings.append(f"模块[{module}]未配置open状态值，已回退默认状态判定逻辑")
         local_stats = build_local_stats(module, events, report_date, open_status_rules)
         records = build_event_records(events, open_status_rules)
 

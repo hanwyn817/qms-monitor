@@ -93,6 +93,13 @@ def _to_int_optional(value: Any) -> int | None:
     return _to_int(value)
 
 
+def _to_int_with_default(value: Any, default: int) -> int:
+    parsed = _to_int(value)
+    if parsed is None:
+        return default
+    return parsed
+
+
 def _config_from_dict(raw: dict[str, Any]) -> LedgerConfig | None:
     row_no = _to_int(raw.get("row_no"))
     id_col = _to_int(raw.get("id_col"))
@@ -116,32 +123,34 @@ def _config_from_dict(raw: dict[str, Any]) -> LedgerConfig | None:
         owner_col=_to_int_optional(raw.get("owner_col")),
         qa_col=_to_int_optional(raw.get("qa_col")),
         qa_manager_col=_to_int_optional(raw.get("qa_manager_col")),
+        open_status_value=str(raw.get("open_status_value", "")).strip(),
+        data_start_row=max(2, _to_int_with_default(raw.get("data_start_row"), 2)),
     )
 
 
-def _parse_open_status_rules(raw: Any, warnings: list[str]) -> dict[str, str]:
+def _build_open_status_rules_from_configs(configs: list[LedgerConfig]) -> dict[str, str]:
     rules: dict[str, str] = {}
+    errors: list[str] = []
+    for cfg in configs:
+        module = cfg.module.strip()
+        open_status = cfg.open_status_value.strip()
+        if not module:
+            continue
+        if not open_status:
+            errors.append(f"manifest配置 row_no={cfg.row_no} 模块[{module}]缺少未完成状态值")
+            continue
+        existing = rules.get(module)
+        if existing is not None and existing != open_status:
+            errors.append(
+                f"manifest中模块[{module}]存在多个未完成状态值: [{existing}] 与 [{open_status}]"
+            )
+            continue
+        rules[module] = open_status
 
-    if isinstance(raw, dict):
-        for module, status in raw.items():
-            module_key = str(module).strip()
-            status_value = str(status).strip()
-            if module_key and status_value:
-                rules[module_key] = status_value
-        return rules
+    if errors:
+        details = "; ".join(errors)
+        raise RuntimeError(f"manifest未完成状态值配置错误: {details}")
 
-    if isinstance(raw, list):
-        for item in raw:
-            if not isinstance(item, dict):
-                continue
-            module = str(item.get("module", "")).strip()
-            open_status = str(item.get("open_status", "")).strip()
-            if module and open_status:
-                rules[module] = open_status
-        return rules
-
-    if raw is not None:
-        warnings.append("manifest中的open_status_rules格式无效，已忽略")
     return rules
 
 
@@ -159,7 +168,6 @@ def load_csv_manifest_bundle(path: Path) -> tuple[list[LedgerConfig], dict[int, 
     if not isinstance(items, list):
         raise RuntimeError("manifest缺少items数组")
 
-    open_status_rules = _parse_open_status_rules(payload.get("open_status_rules"), warnings)
     config_map: dict[int, LedgerConfig] = {}
     csv_map: dict[int, Path] = {}
     for item in items:
@@ -196,4 +204,5 @@ def load_csv_manifest_bundle(path: Path) -> tuple[list[LedgerConfig], dict[int, 
         csv_map[row_no] = resolved
 
     configs = [config_map[row_no] for row_no in sorted(config_map.keys())]
+    open_status_rules = _build_open_status_rules_from_configs(configs)
     return configs, csv_map, open_status_rules, warnings

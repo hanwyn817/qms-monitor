@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .config_loader import load_config, load_open_status_rules
+from .config_loader import build_open_status_rules, load_config
 from .csv_io import dump_csv_manifest, write_csv_rows
 from .excel_reader import ExcelBatchReader
 
@@ -32,8 +32,7 @@ def _values_to_rows(values: Any) -> list[list[str]]:
 
 def export_csv_cache(config_path: Path, output_dir: Path) -> tuple[Path, list[str]]:
     configs, warnings = load_config(config_path)
-    open_status_rules, rule_warnings = load_open_status_rules(config_path)
-    warnings.extend(rule_warnings)
+    build_open_status_rules(configs)
 
     rows_dir = output_dir / "rows"
     manifest_path = output_dir / "manifest.json"
@@ -97,7 +96,6 @@ def export_csv_cache(config_path: Path, output_dir: Path) -> tuple[Path, list[st
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "config_path": str(config_path),
         "output_dir": str(output_dir),
-        "open_status_rules": open_status_rules,
         "items": items,
     }
     dump_csv_manifest(manifest_path, manifest)

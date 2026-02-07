@@ -4,23 +4,15 @@ from collections import Counter
 from datetime import date
 from typing import Any
 
-from .constants import CLOSED_STATUS_KEYWORDS
 from .models import QmsEvent
-
-
-def is_closed(status: str) -> bool:
-    s = (status or "").strip().lower()
-    if not s:
-        return False
-    return any(k.lower() in s for k in CLOSED_STATUS_KEYWORDS)
 
 
 def is_open_status(module: str, status: str, open_status_rules: dict[str, str]) -> bool:
     status_value = (status or "").strip()
     open_status = open_status_rules.get(module)
-    if open_status is not None:
-        return status_value == open_status
-    return not is_closed(status_value)
+    if open_status is None:
+        raise ValueError(f"模块[{module}]未配置未完成状态值")
+    return status_value == open_status
 
 
 def build_local_stats(
@@ -45,6 +37,8 @@ def build_local_stats(
                     "initiated_date": event.initiated_date_str,
                     "planned_date": event.planned_date_str,
                     "status": event.status,
+                    "owner_dept": event.owner_dept,
+                    "owner": event.owner,
                     "qa": event.qa,
                     "qa_manager": event.qa_manager,
                     "source": f"{event.source_file} | {event.source_sheet} | row {event.row_index}",

@@ -8,6 +8,21 @@ from .models import LedgerConfig
 from .parsers import col_to_index, normalize_sheet_name, parse_tabular_text, parse_year
 
 
+def _parse_data_start_row(raw: str, row_no: int, module: str, warnings: list[str]) -> int:
+    value = (raw or "").strip()
+    if not value:
+        return 2
+    try:
+        n = int(float(value))
+    except ValueError:
+        warnings.append(f"config第{row_no}行 模块[{module}]数据起始行非法[{value}]，已回退为2")
+        return 2
+    if n < 2:
+        warnings.append(f"config第{row_no}行 模块[{module}]数据起始行[{n}]小于2，已回退为2")
+        return 2
+    return n
+
+
 def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
     warnings: list[str] = []
     result = read_excel_document(str(config_path), sheet=1)
@@ -60,6 +75,8 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
                 owner_col=col_to_index(row_padded[11]),
                 qa_col=col_to_index(row_padded[12]),
                 qa_manager_col=col_to_index(row_padded[13]),
+                open_status_value=row_padded[14].strip(),
+                data_start_row=_parse_data_start_row(row_padded[15], i, module, warnings),
             )
         )
 
@@ -68,43 +85,28 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
     return configs, warnings
 
 
-def load_open_status_rules(config_path: Path) -> tuple[dict[str, str], list[str]]:
-    warnings: list[str] = []
+def build_open_status_rules(configs: list[LedgerConfig]) -> dict[str, str]:
+    errors: list[str] = []
     rules: dict[str, str] = {}
 
-    result = read_excel_document(str(config_path), sheet="open_status_rules")
-    if not result.ok:
-        warnings.append("未找到open_status_rules配置表，已回退默认状态判定逻辑")
-        return rules, warnings
-
-    rows = parse_tabular_text(result.text)
-    if not rows:
-        warnings.append("open_status_rules为空，已回退默认状态判定逻辑")
-        return rules, warnings
-
-    header = [cell.strip() for cell in rows[0]]
-
-    def find_col(candidates: list[str]) -> int | None:
-        for idx, name in enumerate(header):
-            if name in candidates:
-                return idx
-        return None
-
-    module_idx = find_col(["模块", "质量模块", "module"])
-    open_status_idx = find_col(["open状态值", "open_status", "open", "未完成状态"])
-
-    if module_idx is None or open_status_idx is None:
-        warnings.append("open_status_rules表头缺少[模块/open状态值]，已回退默认状态判定逻辑")
-        return {}, warnings
-
-    for row_no, row in enumerate(rows[1:], start=2):
-        module = row[module_idx].strip() if module_idx < len(row) else ""
-        open_status = row[open_status_idx].strip() if open_status_idx < len(row) else ""
-        if not module or not open_status:
+    for cfg in configs:
+        module = cfg.module.strip()
+        open_status = cfg.open_status_value.strip()
+        if not module:
+            continue
+        if not open_status:
+            errors.append(f"config第{cfg.row_no}行 模块[{module}]缺少未完成状态值")
+            continue
+        existing = rules.get(module)
+        if existing is not None and existing != open_status:
+            errors.append(
+                f"模块[{module}]存在多个未完成状态值: [{existing}] 与 [{open_status}]"
+            )
             continue
         rules[module] = open_status
 
-    if not rules:
-        warnings.append("open_status_rules未配置有效规则，已回退默认状态判定逻辑")
+    if errors:
+        details = "; ".join(errors)
+        raise RuntimeError(f"未完成状态值配置错误: {details}")
 
-    return rules, warnings
+    return rules
