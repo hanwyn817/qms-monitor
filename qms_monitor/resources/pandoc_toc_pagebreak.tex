@@ -1,0 +1,7 @@
+\makeatletter
+\let\qms@orig@tableofcontents\tableofcontents
+\renewcommand{\tableofcontents}{%
+  \qms@orig@tableofcontents
+  \clearpage
+}
+\makeatother

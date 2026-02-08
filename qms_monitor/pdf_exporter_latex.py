@@ -66,6 +66,7 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
 
     header_path = Path(__file__).resolve().parent / "resources" / "pandoc_header.tex"
     table_filter_path = Path(__file__).resolve().parent / "resources" / "pandoc_table_widths.lua"
+    toc_pagebreak_path = Path(__file__).resolve().parent / "resources" / "pandoc_toc_pagebreak.tex"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     available_fonts = _list_available_fonts()
@@ -112,6 +113,8 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
         "--variable=urlcolor:blue",
         "--lua-filter",
         str(table_filter_path),
+        "--include-in-header",
+        str(toc_pagebreak_path),
     ]
     if mainfont:
         base_cmd.append("--variable=mainfont:" + mainfont)
