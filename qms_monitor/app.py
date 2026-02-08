@@ -14,7 +14,7 @@ from .config_loader import build_open_status_rules, load_config
 from .csv_io import load_csv_manifest_bundle, read_csv_rows
 from .excel_reader import ExcelBatchReader
 from .ledger_reader import read_ledger_events
-from .llm_client import call_llm
+from .llm_client import call_llm_person_summaries, call_llm_topic_summary
 from .models import QmsEvent
 from .overdue_excel_exporter import export_overdue_events_excel
 from .pdf_exporter import export_markdown_file_to_pdf
@@ -142,32 +142,60 @@ def main() -> int:
     for topic, events in topic_grouped.items():
         local_stats = build_topic_stats(topic, events, report_date, open_status_rules)
         overdue_records = build_overdue_event_records(events, report_date, open_status_rules)
+        merged_stats = dict(local_stats)
 
         if args.skip_llm:
-            topic_results[topic] = local_stats
+            topic_results[topic] = merged_stats
             continue
+
+        base_url = os.getenv("QMS_LLM_BASE_URL", "https://api.openai.com/v1")
+        model = os.getenv("QMS_LLM_MODEL", "")
+        api_key = os.getenv("QMS_LLM_API_KEY", "")
+        timeout_seconds = int(os.getenv("QMS_LLM_TIMEOUT", "120"))
+        progress_interval_seconds = int(os.getenv("QMS_LLM_PROGRESS_INTERVAL", "15"))
 
         try:
             llm_start = time.time()
-            print(f"[LLM] 开始分析主题[{topic}] ...", file=sys.stderr, flush=True)
-            llm_stats = call_llm(
+            print(f"[LLM] 开始主题总结[{topic}] ...", file=sys.stderr, flush=True)
+            summary = call_llm_topic_summary(
                 topic=topic,
                 report_date=report_date,
                 local_stats=local_stats,
                 overdue_records=overdue_records,
-                base_url=os.getenv("QMS_LLM_BASE_URL", "https://api.openai.com/v1"),
-                model=os.getenv("QMS_LLM_MODEL", ""),
-                api_key=os.getenv("QMS_LLM_API_KEY", ""),
-                timeout_seconds=int(os.getenv("QMS_LLM_TIMEOUT", "120")),
-                progress_interval_seconds=int(os.getenv("QMS_LLM_PROGRESS_INTERVAL", "15")),
+                base_url=base_url,
+                model=model,
+                api_key=api_key,
+                timeout_seconds=timeout_seconds,
+                progress_interval_seconds=progress_interval_seconds,
+            )
+            merged_stats["summary"] = summary
+            elapsed = time.time() - llm_start
+            print(f"[LLM] 主题总结[{topic}] 完成，用时 {elapsed:.1f}s", file=sys.stderr, flush=True)
+        except Exception as exc:
+            warnings.append(f"主题[{topic}] LLM主题总结失败，已回退本地统计: {exc}")
+            print(f"[LLM] 主题总结[{topic}] 失败: {exc}", file=sys.stderr, flush=True)
+            merged_stats.setdefault("summary", local_stats.get("summary", ""))
+
+        try:
+            llm_start = time.time()
+            print(f"[LLM] 开始人员概括[{topic}] ...", file=sys.stderr, flush=True)
+            merged_stats = call_llm_person_summaries(
+                topic=topic,
+                report_date=report_date,
+                local_stats=merged_stats,
+                base_url=base_url,
+                model=model,
+                api_key=api_key,
+                timeout_seconds=timeout_seconds,
+                progress_interval_seconds=progress_interval_seconds,
             )
             elapsed = time.time() - llm_start
-            print(f"[LLM] 主题[{topic}] 分析完成，用时 {elapsed:.1f}s", file=sys.stderr, flush=True)
-            topic_results[topic] = llm_stats
+            print(f"[LLM] 人员概括[{topic}] 完成，用时 {elapsed:.1f}s", file=sys.stderr, flush=True)
         except Exception as exc:
-            warnings.append(f"主题[{topic}] LLM分析失败，已回退本地统计: {exc}")
-            print(f"[LLM] 主题[{topic}] 分析失败: {exc}", file=sys.stderr, flush=True)
-            topic_results[topic] = local_stats
+            warnings.append(f"主题[{topic}] LLM人员概括失败，已保留现有统计: {exc}")
+            print(f"[LLM] 人员概括[{topic}] 失败: {exc}", file=sys.stderr, flush=True)
+
+        topic_results[topic] = merged_stats
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

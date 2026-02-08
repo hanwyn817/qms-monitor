@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections import Counter
 from datetime import date
 from typing import Any
@@ -22,6 +23,57 @@ def is_open_status(module: str, status: str, open_status_rules: dict[str, str]) 
     if open_status is None:
         raise ValueError(f"模块[{module}]未配置未完成状态值")
     return status_value == open_status
+
+
+def _normalize_name(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _build_ranked_counter(overdue_items: list[dict[str, Any]], field: str) -> list[dict[str, Any]]:
+    counter: Counter[str] = Counter()
+    for item in overdue_items:
+        name = _normalize_name(item.get(field))
+        if name:
+            counter[name] += 1
+    return [{"name": name, "count": count} for name, count in sorted(counter.items(), key=lambda x: (-x[1], x[0]))]
+
+
+def _build_top20_overdue_payload(
+    overdue_items: list[dict[str, Any]],
+    ranked_rows: list[dict[str, Any]],
+    field: str,
+) -> list[dict[str, Any]]:
+    if not ranked_rows:
+        return []
+
+    top_n = max(1, math.ceil(len(ranked_rows) * 0.2))
+    threshold_row = ranked_rows[top_n - 1]
+    threshold_count = int(threshold_row.get("count", 0) or 0)
+    top_rows = [row for row in ranked_rows if int(row.get("count", 0) or 0) >= threshold_count]
+    payload: list[dict[str, Any]] = []
+
+    for row in top_rows:
+        name = _normalize_name(row.get("name"))
+        if not name:
+            continue
+        person_items: list[dict[str, Any]] = []
+        for item in overdue_items:
+            if _normalize_name(item.get(field)) != name:
+                continue
+            person_items.append(
+                {
+                    "module": item.get("module", ""),
+                    "year": item.get("year", ""),
+                    "event_id": item.get("event_id", ""),
+                    "content": item.get("content", ""),
+                    "planned_date": item.get("planned_date", ""),
+                    "status": item.get("status", ""),
+                    "owner_dept": item.get("owner_dept", ""),
+                }
+            )
+        payload.append({"name": name, "count": int(row.get("count", 0) or 0), "overdue_items": person_items})
+
+    return payload
 
 
 def build_local_stats(
@@ -61,15 +113,16 @@ def build_local_stats(
     overdue_count = len(overdue_items)
     ratio = round((overdue_count / total) * 100, 2) if total else 0.0
 
-    qa_counter = Counter(item["qa"] for item in overdue_items if item.get("qa"))
-    qa_manager_counter = Counter(item["qa_manager"] for item in overdue_items if item.get("qa_manager"))
-
     yearly_totals = [{"year": y, "count": c} for y, c in sorted(yearly_counter.items(), key=lambda x: x[0])]
-    overdue_by_qa = [{"name": name, "count": count} for name, count in sorted(qa_counter.items(), key=lambda x: (-x[1], x[0]))]
-    overdue_by_qa_manager = [
-        {"name": name, "count": count}
-        for name, count in sorted(qa_manager_counter.items(), key=lambda x: (-x[1], x[0]))
-    ]
+    overdue_by_qa = _build_ranked_counter(overdue_items, "qa")
+    overdue_by_qa_manager = _build_ranked_counter(overdue_items, "qa_manager")
+    overdue_by_owner_dept = _build_ranked_counter(overdue_items, "owner_dept")
+    for row in overdue_by_qa:
+        row["summary"] = ""
+    for row in overdue_by_qa_manager:
+        row["summary"] = ""
+    overdue_by_qa_top20 = _build_top20_overdue_payload(overdue_items, overdue_by_qa, "qa")
+    overdue_by_qa_manager_top20 = _build_top20_overdue_payload(overdue_items, overdue_by_qa_manager, "qa_manager")
 
     return {
         "module": module,
@@ -81,6 +134,9 @@ def build_local_stats(
         },
         "overdue_by_qa": overdue_by_qa,
         "overdue_by_qa_manager": overdue_by_qa_manager,
+        "overdue_by_owner_dept": overdue_by_owner_dept,
+        "overdue_by_qa_top20": overdue_by_qa_top20,
+        "overdue_by_qa_manager_top20": overdue_by_qa_manager_top20,
     }
 
 
@@ -161,13 +217,15 @@ def build_topic_stats(
             }
         )
 
-    qa_counter = Counter(item["qa"] for item in overdue_items if item.get("qa"))
-    qa_manager_counter = Counter(item["qa_manager"] for item in overdue_items if item.get("qa_manager"))
-    overdue_by_qa = [{"name": name, "count": count} for name, count in sorted(qa_counter.items(), key=lambda x: (-x[1], x[0]))]
-    overdue_by_qa_manager = [
-        {"name": name, "count": count}
-        for name, count in sorted(qa_manager_counter.items(), key=lambda x: (-x[1], x[0]))
-    ]
+    overdue_by_qa = _build_ranked_counter(overdue_items, "qa")
+    overdue_by_qa_manager = _build_ranked_counter(overdue_items, "qa_manager")
+    overdue_by_owner_dept = _build_ranked_counter(overdue_items, "owner_dept")
+    for row in overdue_by_qa:
+        row["summary"] = ""
+    for row in overdue_by_qa_manager:
+        row["summary"] = ""
+    overdue_by_qa_top20 = _build_top20_overdue_payload(overdue_items, overdue_by_qa, "qa")
+    overdue_by_qa_manager_top20 = _build_top20_overdue_payload(overdue_items, overdue_by_qa_manager, "qa_manager")
 
     return {
         "topic": topic,
@@ -182,6 +240,9 @@ def build_topic_stats(
         "by_module": by_module,
         "overdue_by_qa": overdue_by_qa,
         "overdue_by_qa_manager": overdue_by_qa_manager,
+        "overdue_by_owner_dept": overdue_by_owner_dept,
+        "overdue_by_qa_top20": overdue_by_qa_top20,
+        "overdue_by_qa_manager_top20": overdue_by_qa_manager_top20,
     }
 
 

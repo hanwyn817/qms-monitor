@@ -65,6 +65,7 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
         raise RuntimeError(f"Markdown文件不存在: {markdown_path}")
 
     header_path = Path(__file__).resolve().parent / "resources" / "pandoc_header.tex"
+    table_filter_path = Path(__file__).resolve().parent / "resources" / "pandoc_table_widths.lua"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     available_fonts = _list_available_fonts()
@@ -109,6 +110,8 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
         "--variable=colorlinks:true",
         "--variable=linkcolor:blue",
         "--variable=urlcolor:blue",
+        "--lua-filter",
+        str(table_filter_path),
     ]
     if mainfont:
         base_cmd.append("--variable=mainfont:" + mainfont)

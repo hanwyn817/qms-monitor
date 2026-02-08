@@ -220,11 +220,14 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
         if tag_name == "table":
             rows: list[list[Paragraph]] = []
             header_count = 0
+            has_summary_column = False
             for tr in block.find_all("tr", recursive=True):
                 row: list[Paragraph] = []
                 is_header_row = tr.find_parent("thead") is not None
+                plain_cells: list[str] = []
 
                 for cell in tr.find_all(["th", "td"], recursive=False):
+                    plain_cells.append(cell.get_text(" ", strip=True))
                     cell_markup = _to_para_markup(cell.contents, code_font=code_font)
                     if cell.name.lower() == "th":
                         cell_markup = f"<b>{cell_markup}</b>"
@@ -235,6 +238,8 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
                     rows.append(row)
                     if is_header_row:
                         header_count += 1
+                        if any((text or "").strip() == "超期内容概括" for text in plain_cells):
+                            has_summary_column = True
 
             if rows:
                 col_count = max(len(row) for row in rows)
@@ -244,7 +249,21 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
                         row = row + [Paragraph(" ", table_cell_style)] * (col_count - len(row))
                     normalized_rows.append(row)
 
-                table = Table(normalized_rows, repeatRows=header_count if header_count > 0 else 0)
+                if has_summary_column and col_count == 3:
+                    usable_width = A4[0] - 80
+                    table_total_width = usable_width * 0.72
+                    table = Table(
+                        normalized_rows,
+                        colWidths=[
+                            table_total_width * (0.10 / 0.72),
+                            table_total_width * (0.07 / 0.72),
+                            table_total_width * (0.55 / 0.72),
+                        ],
+                        repeatRows=header_count if header_count > 0 else 0,
+                        hAlign="CENTER",
+                    )
+                else:
+                    table = Table(normalized_rows, repeatRows=header_count if header_count > 0 else 0)
                 table.setStyle(
                     TableStyle(
                         [
