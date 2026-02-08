@@ -5,6 +5,54 @@ from pathlib import Path
 from typing import Iterable
 
 
+def _weighted_text_len(text: str) -> int:
+    length = 0
+    for ch in text:
+        length += 2 if ord(ch) > 127 else 1
+    return max(length, 1)
+
+
+def _adaptive_table_total_width(
+    plain_rows: list[list[str]],
+    usable_width: float,
+    *,
+    min_ratio: float,
+    max_ratio: float,
+) -> float:
+    if not plain_rows:
+        return usable_width * min_ratio
+
+    col_count = max(len(row) for row in plain_rows)
+    col_max_units: list[int] = [1] * col_count
+    for idx in range(col_count):
+        for row in plain_rows:
+            cell_text = (row[idx] if idx < len(row) else "").strip()
+            col_max_units[idx] = max(col_max_units[idx], min(_weighted_text_len(cell_text), 40))
+
+    # Estimate natural table width from content units and per-column paddings.
+    natural_width = sum(col_max_units) * 4.6 + col_count * 14
+    min_width = usable_width * min_ratio
+    max_width = usable_width * max_ratio
+    return max(min_width, min(natural_width, max_width))
+
+
+def _estimate_col_widths(plain_rows: list[list[str]], total_width: float) -> list[float]:
+    if not plain_rows:
+        return []
+
+    col_count = max(len(row) for row in plain_rows)
+    weights: list[float] = [1.0] * col_count
+    for idx in range(col_count):
+        col_max = 1
+        for row in plain_rows:
+            cell_text = (row[idx] if idx < len(row) else "").strip()
+            col_max = max(col_max, min(_weighted_text_len(cell_text), 40))
+        weights[idx] = float(col_max)
+
+    total = sum(weights) or float(col_count)
+    return [total_width * (w / total) for w in weights]
+
+
 def _to_para_markup(nodes: Iterable[object], *, code_font: str) -> str:
     from bs4 import NavigableString, Tag
 
@@ -155,6 +203,7 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
     soup = BeautifulSoup(html, "html.parser")
 
     story: list[object] = []
+    heading_counters = {"h1": 0, "h2": 0, "h3": 0}
 
     for block in soup.contents:
         if isinstance(block, NavigableString):
@@ -169,7 +218,31 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
         tag_name = block.name.lower()
 
         if tag_name in {"h1", "h2", "h3"}:
-            story.append(Paragraph(_to_para_markup(block.contents, code_font=code_font), heading_styles[tag_name]))
+            if tag_name == "h1":
+                heading_counters["h1"] += 1
+                heading_counters["h2"] = 0
+                heading_counters["h3"] = 0
+                number_prefix = f"{heading_counters['h1']}、"
+            elif tag_name == "h2":
+                if heading_counters["h1"] == 0:
+                    heading_counters["h1"] = 1
+                heading_counters["h2"] += 1
+                heading_counters["h3"] = 0
+                number_prefix = f"{heading_counters['h1']}.{heading_counters['h2']}"
+            else:
+                if heading_counters["h1"] == 0:
+                    heading_counters["h1"] = 1
+                if heading_counters["h2"] == 0:
+                    heading_counters["h2"] = 1
+                heading_counters["h3"] += 1
+                number_prefix = (
+                    f"{heading_counters['h1']}."
+                    f"{heading_counters['h2']}."
+                    f"{heading_counters['h3']}"
+                )
+
+            heading_markup = _to_para_markup(block.contents, code_font=code_font)
+            story.append(Paragraph(f"{number_prefix} {heading_markup}", heading_styles[tag_name]))
             continue
 
         if tag_name == "p":
@@ -194,24 +267,32 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
                         nested_markup = _to_para_markup(nested_li.contents, code_font=code_font) or " "
                         nested_items.append(ListItem(Paragraph(nested_markup, body_style)))
                     if nested_items:
+                        nested_kwargs = {
+                            "bulletType": "1" if nested.name == "ol" else "bullet",
+                            "leftIndent": 16,
+                        }
+                        if nested.name == "ol":
+                            nested_kwargs["start"] = "1"
                         list_items.append(
                             ListItem(
                                 ListFlowable(
                                     nested_items,
-                                    bulletType="1" if nested.name == "ol" else "bullet",
-                                    start="1",
-                                    leftIndent=16,
+                                    **nested_kwargs,
                                 )
                             )
                         )
 
             if list_items:
+                list_kwargs = {
+                    "bulletType": "1" if is_ordered else "bullet",
+                    "leftIndent": 12,
+                }
+                if is_ordered:
+                    list_kwargs["start"] = "1"
                 story.append(
                     ListFlowable(
                         list_items,
-                        bulletType="1" if is_ordered else "bullet",
-                        start="1",
-                        leftIndent=12,
+                        **list_kwargs,
                     )
                 )
                 story.append(Spacer(1, 4))
@@ -219,6 +300,7 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
 
         if tag_name == "table":
             rows: list[list[Paragraph]] = []
+            plain_rows: list[list[str]] = []
             header_count = 0
             has_summary_column = False
             for tr in block.find_all("tr", recursive=True):
@@ -236,6 +318,7 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
 
                 if row:
                     rows.append(row)
+                    plain_rows.append(plain_cells)
                     if is_header_row:
                         header_count += 1
                         if any((text or "").strip() == "超期内容概括" for text in plain_cells):
@@ -244,26 +327,50 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
             if rows:
                 col_count = max(len(row) for row in rows)
                 normalized_rows: list[list[Paragraph]] = []
-                for row in rows:
+                normalized_plain_rows: list[list[str]] = []
+                for row, plain_row in zip(rows, plain_rows):
                     if len(row) < col_count:
                         row = row + [Paragraph(" ", table_cell_style)] * (col_count - len(row))
+                    if len(plain_row) < col_count:
+                        plain_row = plain_row + [""] * (col_count - len(plain_row))
                     normalized_rows.append(row)
+                    normalized_plain_rows.append(plain_row)
 
                 if has_summary_column and col_count == 3:
                     usable_width = A4[0] - 80
-                    table_total_width = usable_width * 0.72
+                    table_total_width = _adaptive_table_total_width(
+                        normalized_plain_rows,
+                        usable_width,
+                        min_ratio=0.62,
+                        max_ratio=0.86,
+                    )
                     table = Table(
                         normalized_rows,
                         colWidths=[
-                            table_total_width * (0.10 / 0.72),
-                            table_total_width * (0.07 / 0.72),
-                            table_total_width * (0.55 / 0.72),
+                            table_total_width * (10 / 72),
+                            table_total_width * (7 / 72),
+                            table_total_width * (55 / 72),
                         ],
                         repeatRows=header_count if header_count > 0 else 0,
                         hAlign="CENTER",
                     )
                 else:
-                    table = Table(normalized_rows, repeatRows=header_count if header_count > 0 else 0)
+                    usable_width = A4[0] - 80
+                    min_ratio = min(0.78, 0.34 + 0.09 * col_count)
+                    max_ratio = 0.90 if col_count <= 3 else 0.95
+                    table_total_width = _adaptive_table_total_width(
+                        normalized_plain_rows,
+                        usable_width,
+                        min_ratio=min_ratio,
+                        max_ratio=max_ratio,
+                    )
+                    col_widths = _estimate_col_widths(normalized_plain_rows, table_total_width)
+                    table = Table(
+                        normalized_rows,
+                        colWidths=col_widths if col_widths else None,
+                        repeatRows=header_count if header_count > 0 else 0,
+                        hAlign="CENTER",
+                    )
                 table.setStyle(
                     TableStyle(
                         [
@@ -329,7 +436,16 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
         bottomMargin=40,
         title="QMS Report",
     )
-    doc.build(story)
+
+    def _draw_page_footer(canvas_obj, doc_obj) -> None:
+        canvas_obj.saveState()
+        canvas_obj.setFont(font_name, 9)
+        canvas_obj.setFillColor(colors.HexColor("#6b7280"))
+        page_text = str(canvas_obj.getPageNumber())
+        canvas_obj.drawCentredString(doc_obj.pagesize[0] / 2, 18, page_text)
+        canvas_obj.restoreState()
+
+    doc.build(story, onFirstPage=_draw_page_footer, onLaterPages=_draw_page_footer)
 
 
 def export_markdown_file_to_pdf(markdown_path: Path, output_path: Path) -> None:
