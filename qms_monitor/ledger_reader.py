@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 from .excel_reader import ExcelBatchReader, read_excel_document
@@ -99,11 +100,15 @@ def read_ledger_events(
             continue
 
         initiated_date = parse_date_cell(initiated_raw)
-        planned_raw = get_cell(row, cfg.planned_col)
-        planned_date = parse_date_cell(planned_raw)
-
-        if planned_date is None and initiated_date is not None:
+        if cfg.planned_due_days is not None:
+            planned_date = initiated_date + timedelta(days=cfg.planned_due_days) if initiated_date else None
+        elif cfg.planned_col is not None:
+            planned_raw = get_cell(row, cfg.planned_col)
+            planned_date = parse_date_cell(planned_raw)
+        elif initiated_date is not None:
             planned_date = add_one_month(initiated_date)
+        else:
+            planned_date = None
 
         status = get_cell(row, cfg.status_col)
         owner_dept = get_cell(row, cfg.owner_dept_col)

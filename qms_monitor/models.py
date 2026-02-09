@@ -16,6 +16,7 @@ class LedgerConfig:
     content_col: int
     initiated_col: int
     planned_col: int | None = None
+    planned_due_days: int | None = None
     status_col: int | None = None
     owner_dept_col: int | None = None
     owner_col: int | None = None

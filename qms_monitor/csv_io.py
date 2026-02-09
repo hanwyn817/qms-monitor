@@ -119,6 +119,7 @@ def _config_from_dict(raw: dict[str, Any]) -> LedgerConfig | None:
         content_col=content_col,
         initiated_col=initiated_col,
         planned_col=_to_int_optional(raw.get("planned_col")),
+        planned_due_days=_to_int_optional(raw.get("planned_due_days")),
         status_col=_to_int_optional(raw.get("status_col")),
         owner_dept_col=_to_int_optional(raw.get("owner_dept_col")),
         owner_col=_to_int_optional(raw.get("owner_col")),

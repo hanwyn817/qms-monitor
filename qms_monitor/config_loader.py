@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .constants import HEADER_LEN
@@ -21,6 +22,25 @@ def _parse_data_start_row(raw: str, row_no: int, module: str, warnings: list[str
         warnings.append(f"config第{row_no}行 模块[{module}]数据起始行[{n}]小于2，已回退为2")
         return 2
     return n
+
+
+def _parse_planned_rule(raw: str, row_no: int, module: str, warnings: list[str]) -> tuple[int | None, int | None]:
+    value = (raw or "").strip()
+    if not value:
+        return None, None
+
+    if re.fullmatch(r"\d+(\.0+)?", value):
+        return None, int(float(value))
+
+    if re.fullmatch(r"[A-Za-z]+", value):
+        planned_col = col_to_index(value)
+        if planned_col is not None:
+            return planned_col, None
+
+    warnings.append(
+        f"config第{row_no}行 模块[{module}]计划完成规则非法[{value}]，应为列标字母(如J/AA)或数字天数"
+    )
+    return None, None
 
 
 def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
@@ -59,6 +79,7 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
         if id_col is None or content_col is None or initiated_col is None:
             warnings.append(f"config第{i}行核心列(G/H/I)缺失或非法，已跳过: 模块={module}")
             continue
+        planned_col, planned_due_days = _parse_planned_rule(row_padded[9], i, module, warnings)
 
         configs.append(
             LedgerConfig(
@@ -71,7 +92,8 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
                 id_col=id_col,
                 content_col=content_col,
                 initiated_col=initiated_col,
-                planned_col=col_to_index(row_padded[9]),
+                planned_col=planned_col,
+                planned_due_days=planned_due_days,
                 status_col=col_to_index(row_padded[10]),
                 owner_dept_col=col_to_index(row_padded[11]),
                 owner_col=col_to_index(row_padded[12]),
