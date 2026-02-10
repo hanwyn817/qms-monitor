@@ -58,9 +58,9 @@ Public Sub RunQmsLocalStats()
 
     If errors.Count > 0 Then
         WriteValidationLog wsLog, warnings, errors, "配置校验失败，未开始统计。"
-        MsgBox "配置校验失败（" & CStr(errors.Count) & "项），未开始统计。" & vbCrLf & _
-               "示例: " & PreviewCollection(errors, 3) & vbCrLf & _
-               "请查看 Log 工作表完整明细。", vbCritical
+        Dim cfgErrMsg As String
+        cfgErrMsg = "配置校验失败（" & CStr(errors.Count) & "项），未开始统计。" & vbCrLf & "示例: " & PreviewCollection(errors, 3) & vbCrLf & "请查看 Log 工作表完整明细。"
+        MsgBox cfgErrMsg, vbCritical, "QMS Local Stats"
         GoTo CleanExit
     End If
 
@@ -84,9 +84,9 @@ Public Sub RunQmsLocalStats()
 
     If errors.Count > 0 Then
         WriteValidationLog wsLog, warnings, errors, "状态规则校验失败，未开始统计。"
-        MsgBox "状态规则校验失败（" & CStr(errors.Count) & "项）。" & vbCrLf & _
-               "示例: " & PreviewCollection(errors, 3) & vbCrLf & _
-               "请查看 Log 工作表完整明细。", vbCritical
+        Dim ruleErrMsg As String
+        ruleErrMsg = "状态规则校验失败（" & CStr(errors.Count) & "项）。" & vbCrLf & "示例: " & PreviewCollection(errors, 3) & vbCrLf & "请查看 Log 工作表完整明细。"
+        MsgBox ruleErrMsg, vbCritical, "QMS Local Stats"
         GoTo CleanExit
     End If
 
@@ -169,11 +169,9 @@ Public Sub RunQmsPrecheckReport()
 
     Dim errCount As Long
     errCount = errors.Count
-    MsgBox "预检查完成（未执行统计）。" & vbCrLf & _
-           "检查项: " & CStr(reportRows.Count) & vbCrLf & _
-           "校验错误: " & CStr(errCount) & vbCrLf & _
-           "告警: " & CStr(warnings.Count) & vbCrLf & _
-           "详细结果请查看 Precheck_Report 与 Log。", vbInformation
+    Dim precheckMsg As String
+    precheckMsg = "预检查完成（未执行统计）。" & vbCrLf & "检查项: " & CStr(reportRows.Count) & vbCrLf & "校验错误: " & CStr(errCount) & vbCrLf & "告警: " & CStr(warnings.Count) & vbCrLf & "详细结果请查看 Precheck_Report 与 Log。"
+    MsgBox precheckMsg, vbInformation, "QMS Local Stats"
 
 CleanExit:
     Application.Calculation = oldCalc
