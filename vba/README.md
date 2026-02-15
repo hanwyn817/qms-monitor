@@ -3,6 +3,13 @@
 本目录提供一个可直接导入的 VBA 模块：
 
 - `/Users/hanwyn/Project/qms-monitor/vba/qms_local_stats.bas`
+- `/Users/hanwyn/Project/qms-monitor/vba/qms_local_stats.win.bas`（Windows Excel 导入推荐，GBK 编码）
+
+## 编码说明（避免中文乱码）
+
+- `qms_local_stats.bas` 为 UTF-8，便于代码托管与跨平台编辑。
+- Windows 的 VBA 编辑器导入 `.bas` 时通常按本机 ANSI 代码页读取，直接导入 UTF-8 可能出现中文乱码。
+- 在中文 Windows Excel 中，优先导入 `qms_local_stats.win.bas`。
 
 ## 目标
 
