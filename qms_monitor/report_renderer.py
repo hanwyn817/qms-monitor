@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 MAX_RANK_TABLE_ROWS = 15
+MAX_OWNER_RANK_TABLE_ROWS = 10
 
 
 def safe_md_cell(value: Any) -> str:
@@ -85,11 +86,35 @@ def render_markdown_report(
     lines.append(f"- 跳过台账: {skipped_files}")
     lines.append("")
 
-    if warnings:
-        lines.append("# 处理告警")
-        for warning in warnings:
-            lines.append(f"- {warning}")
-        lines.append("")
+    lines.append("# 质量体系运行总结")
+    summary_rows: list[tuple[str, str, int, int, Any]] = []
+    for topic in sorted(topic_results.keys()):
+        item = topic_results[topic]
+        yearly_overdue = item.get("yearly_overdue", [])
+        if not yearly_overdue:
+            continue
+        yearly_overdue_sorted = sorted(yearly_overdue, key=lambda row: str(row.get("year", "")), reverse=True)
+        for row in yearly_overdue_sorted:
+            summary_rows.append(
+                (
+                    str(topic),
+                    str(row.get("year", "") or ""),
+                    int(row.get("count", 0) or 0),
+                    int(row.get("overdue_count", 0) or 0),
+                    row.get("overdue_ratio", 0),
+                )
+            )
+
+    if summary_rows:
+        lines.append("| 主题 | 年份 | 事件数 | 超期事件数 | 超期百分比 |")
+        lines.append("|---|---:|---:|---:|---:|")
+        for topic, year, count, overdue_count, overdue_ratio in summary_rows:
+            lines.append(
+                f"| {safe_md_cell(topic)} | {safe_md_cell(year)} | {count} | {overdue_count} | {overdue_ratio}% |"
+            )
+    else:
+        lines.append("无可统计数据")
+    lines.append("")
 
     for topic in sorted(topic_results.keys()):
         item = topic_results[topic]
@@ -100,9 +125,10 @@ def render_markdown_report(
         yearly_overdue = item.get("yearly_overdue", [])
         lines.append("## 各年度超期情况")
         if yearly_overdue:
+            yearly_overdue_sorted = sorted(yearly_overdue, key=lambda row: str(row.get("year", "")), reverse=True)
             lines.append("| 年份 | 起数 | 超期起数 | 超期占比 |")
             lines.append("|---|---:|---:|---:|")
-            for row in yearly_overdue:
+            for row in yearly_overdue_sorted:
                 lines.append(
                     f"| {row.get('year', '')} | {row.get('count', 0)} | {row.get('overdue_count', 0)} | {row.get('overdue_ratio', 0)}% |"
                 )
@@ -172,9 +198,27 @@ def render_markdown_report(
             lines.append("无可统计数据")
         lines.append("")
 
+        lines.append("## 超期按责任人统计（降序，仅前10）")
+        owner_rank = item.get("overdue_by_owner", [])
+        if owner_rank:
+            owner_table_rows, _ = split_rank_rows(owner_rank, max_rows=MAX_OWNER_RANK_TABLE_ROWS)
+            lines.append("| 责任人 | 起数 |")
+            lines.append("|---|---:|")
+            for row in owner_table_rows:
+                lines.append(f"| {safe_md_cell(row.get('name', ''))} | {row.get('count', 0)} |")
+        else:
+            lines.append("无可统计数据")
+        lines.append("")
+
         lines.append("## 总结")
         summary = (item.get("summary") or "").strip()
         lines.append(summary if summary else "无")
+        lines.append("")
+
+    if warnings:
+        lines.append("# 处理告警")
+        for warning in warnings:
+            lines.append(f"- {warning}")
         lines.append("")
 
     return "\n".join(lines).strip() + "\n"

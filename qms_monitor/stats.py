@@ -117,6 +117,7 @@ def build_local_stats(
     overdue_by_qa = _build_ranked_counter(overdue_items, "qa")
     overdue_by_qa_manager = _build_ranked_counter(overdue_items, "qa_manager")
     overdue_by_owner_dept = _build_ranked_counter(overdue_items, "owner_dept")
+    overdue_by_owner = _build_ranked_counter(overdue_items, "owner")
     for row in overdue_by_qa:
         row["summary"] = ""
     for row in overdue_by_qa_manager:
@@ -135,6 +136,7 @@ def build_local_stats(
         "overdue_by_qa": overdue_by_qa,
         "overdue_by_qa_manager": overdue_by_qa_manager,
         "overdue_by_owner_dept": overdue_by_owner_dept,
+        "overdue_by_owner": overdue_by_owner,
         "overdue_by_qa_top20": overdue_by_qa_top20,
         "overdue_by_qa_manager_top20": overdue_by_qa_manager_top20,
     }
@@ -220,6 +222,7 @@ def build_topic_stats(
     overdue_by_qa = _build_ranked_counter(overdue_items, "qa")
     overdue_by_qa_manager = _build_ranked_counter(overdue_items, "qa_manager")
     overdue_by_owner_dept = _build_ranked_counter(overdue_items, "owner_dept")
+    overdue_by_owner = _build_ranked_counter(overdue_items, "owner")
     for row in overdue_by_qa:
         row["summary"] = ""
     for row in overdue_by_qa_manager:
@@ -241,6 +244,7 @@ def build_topic_stats(
         "overdue_by_qa": overdue_by_qa,
         "overdue_by_qa_manager": overdue_by_qa_manager,
         "overdue_by_owner_dept": overdue_by_owner_dept,
+        "overdue_by_owner": overdue_by_owner,
         "overdue_by_qa_top20": overdue_by_qa_top20,
         "overdue_by_qa_manager_top20": overdue_by_qa_manager_top20,
     }
