@@ -31,3 +31,6 @@ artifacts/csv_cache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Local config (commit example file instead)
+config.xlsx
