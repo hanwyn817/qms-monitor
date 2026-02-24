@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,25 +72,29 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
     output_path.parent.mkdir(parents=True, exist_ok=True)
     available_fonts = _list_available_fonts()
 
+    is_win = sys.platform == "win32"
+
     mainfont = _pick_existing_font(
         available_fonts,
         os.getenv("QMS_LATEX_MAINFONT", "").strip(),
-        "PingFang SC",
-        "Songti SC",
+        "Microsoft YaHei" if is_win else "PingFang SC",
+        "SimSun" if is_win else "Songti SC",
+        "PingFang SC" if is_win else "Microsoft YaHei",
         "Heiti SC",
         "Arial Unicode MS",
     )
     sansfont = _pick_existing_font(
         available_fonts,
         os.getenv("QMS_LATEX_SANSFONT", "").strip(),
-        "Helvetica Neue",
-        "PingFang SC",
+        "Microsoft YaHei" if is_win else "Helvetica Neue",
+        "SimSun" if is_win else "PingFang SC",
+        "PingFang SC" if is_win else "Microsoft YaHei",
         "Helvetica",
     )
     monofont = _pick_existing_font(
         available_fonts,
         os.getenv("QMS_LATEX_MONOFONT", "").strip(),
-        "Menlo",
+        "Consolas" if is_win else "Menlo",
         "Courier New",
         "Courier",
     )

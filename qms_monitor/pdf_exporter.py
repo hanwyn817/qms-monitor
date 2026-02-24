@@ -122,11 +122,49 @@ def export_markdown_text_to_pdf(markdown_text: str, output_path: Path) -> None:
     code_font = "Courier"
 
     font_name = fallback_font
-    try:
-        pdfmetrics.registerFont(UnicodeCIDFont(preferred_font))
-        font_name = preferred_font
-    except Exception:
-        font_name = fallback_font
+    
+    import sys
+    import os
+    from reportlab.pdfbase.ttfonts import TTFont
+    
+    system_fonts_to_try = []
+    if sys.platform == "win32":
+        windir = os.environ.get("WINDIR", "C:\\Windows")
+        system_fonts_to_try = [
+            os.path.join(windir, "Fonts", "msyh.ttc"),
+            os.path.join(windir, "Fonts", "msyh.ttf"),
+            os.path.join(windir, "Fonts", "simsun.ttc"),
+            os.path.join(windir, "Fonts", "simhei.ttf"),
+        ]
+    elif sys.platform == "darwin":
+        system_fonts_to_try = [
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+            "/Library/Fonts/Arial Unicode.ttf",
+        ]
+    else:
+        system_fonts_to_try = [
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        ]
+        
+    ttf_registered = False
+    for font_path in system_fonts_to_try:
+        if os.path.exists(font_path):
+            try:
+                pdfmetrics.registerFont(TTFont("QMSSystemFont", font_path))
+                font_name = "QMSSystemFont"
+                ttf_registered = True
+                break
+            except Exception:
+                pass
+
+    if not ttf_registered:
+        try:
+            pdfmetrics.registerFont(UnicodeCIDFont(preferred_font))
+            font_name = preferred_font
+        except Exception:
+            font_name = fallback_font
 
     styles = getSampleStyleSheet()
     body_style = ParagraphStyle(
