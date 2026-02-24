@@ -54,21 +54,48 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
         raise RuntimeError("配置文件为空")
 
     configs: list[LedgerConfig] = []
-    for i, row in enumerate(rows[1:], start=2):
-        row_padded = row + [""] * max(0, HEADER_LEN - len(row))
+    
+    header_row = [c.strip() for c in rows[0]]
+    def get_col_idx(*keywords: str, default: int) -> int:
+        for kw in keywords:
+            for idx, col in enumerate(header_row):
+                if kw in col:
+                    return idx
+        return default
 
-        topic = row_padded[1].strip()
-        module = row_padded[2].strip()
-        year = parse_year(row_padded[3])
-        file_path = row_padded[4].strip()
-        sheet_name = row_padded[5].strip()
+    idx_topic = get_col_idx("主题", default=1)
+    idx_module = get_col_idx("质量模块", "模块", default=2)
+    idx_year = get_col_idx("年份", default=3)
+    idx_file_path = get_col_idx("路径", "文件", default=4)
+    idx_sheet_name = get_col_idx("sheet", "表名称", default=5)
+    idx_id_col = get_col_idx("编号", default=6)
+    idx_content_col = get_col_idx("内容", default=7)
+    idx_initiated_col = get_col_idx("发起日期", "时间", default=8)
+    idx_planned_rule = get_col_idx("计划规则", "完成时限", default=9)
+    idx_status_col = get_col_idx("状态", default=10)
+    idx_owner_dept_col = get_col_idx("责任部门", "部门", default=11)
+    idx_owner_col = get_col_idx("责任人", default=12)
+    idx_qa_col = get_col_idx("分管 QA 列", "分管 QA", "分管QA", default=13)
+    idx_qa_manager_col = get_col_idx("分管 QA 中层列", "分管 QA 中层", "分管QA中层", default=14)
+    idx_open_status = get_col_idx("未完成状态", "未完成", default=15)
+    idx_data_start_row = get_col_idx("数据起始行", "起始行", default=16)
+
+    def extract_val(r: list[str], i: int) -> str:
+        return r[i] if i < len(r) else ""
+
+    for i, row in enumerate(rows[1:], start=2):
+        topic = extract_val(row, idx_topic).strip()
+        module = extract_val(row, idx_module).strip()
+        year = parse_year(extract_val(row, idx_year))
+        file_path = extract_val(row, idx_file_path).strip()
+        sheet_name = extract_val(row, idx_sheet_name).strip()
 
         if not module and not file_path:
             continue
 
-        id_col = col_to_index(row_padded[6])
-        content_col = col_to_index(row_padded[7])
-        initiated_col = col_to_index(row_padded[8])
+        id_col = col_to_index(extract_val(row, idx_id_col))
+        content_col = col_to_index(extract_val(row, idx_content_col))
+        initiated_col = col_to_index(extract_val(row, idx_initiated_col))
 
         if not module:
             warnings.append(f"config第{i}行缺失质量模块，已跳过")
@@ -77,9 +104,9 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
             warnings.append(f"config第{i}行缺失文件路径，已跳过: 模块={module}")
             continue
         if id_col is None or content_col is None or initiated_col is None:
-            warnings.append(f"config第{i}行核心列(G/H/I)缺失或非法，已跳过: 模块={module}")
+            warnings.append(f"config第{i}行核心列(编号/内容/发起日期)缺失或非法，已跳过: 模块={module}")
             continue
-        planned_col, planned_due_days = _parse_planned_rule(row_padded[9], i, module, warnings)
+        planned_col, planned_due_days = _parse_planned_rule(extract_val(row, idx_planned_rule), i, module, warnings)
 
         configs.append(
             LedgerConfig(
@@ -94,13 +121,13 @@ def load_config(config_path: Path) -> tuple[list[LedgerConfig], list[str]]:
                 initiated_col=initiated_col,
                 planned_col=planned_col,
                 planned_due_days=planned_due_days,
-                status_col=col_to_index(row_padded[10]),
-                owner_dept_col=col_to_index(row_padded[11]),
-                owner_col=col_to_index(row_padded[12]),
-                qa_col=col_to_index(row_padded[13]),
-                qa_manager_col=col_to_index(row_padded[14]),
-                open_status_value=row_padded[15].strip(),
-                data_start_row=_parse_data_start_row(row_padded[16], i, module, warnings),
+                status_col=col_to_index(extract_val(row, idx_status_col)),
+                owner_dept_col=col_to_index(extract_val(row, idx_owner_dept_col)),
+                owner_col=col_to_index(extract_val(row, idx_owner_col)),
+                qa_col=col_to_index(extract_val(row, idx_qa_col)),
+                qa_manager_col=col_to_index(extract_val(row, idx_qa_manager_col)),
+                open_status_value=extract_val(row, idx_open_status).strip(),
+                data_start_row=_parse_data_start_row(extract_val(row, idx_data_start_row), i, module, warnings),
             )
         )
 

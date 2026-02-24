@@ -112,6 +112,10 @@ class ExcelSession:
         self.excel = win32.DispatchEx("Excel.Application")
         self.excel.Visible = bool(self.visible)
         self.excel.DisplayAlerts = False
+        try:
+            self.excel.Interactive = False
+        except Exception:
+            pass
         self.excel.AskToUpdateLinks = False
         self.excel.EnableEvents = False
         self.excel.ScreenUpdating = False
@@ -132,6 +136,8 @@ class ExcelSession:
         except Exception:
             pass
         finally:
+            if self.excel is not None:
+                del self.excel
             self.excel = None
 
         try:
@@ -139,6 +145,11 @@ class ExcelSession:
                 self._pythoncom.CoUninitialize()
         except Exception:
             pass
+        finally:
+            self._pythoncom = None
+
+        import gc
+        gc.collect()
 
 
 def find_last_cell(ws, *, look_in: int) -> tuple[int, int]:
@@ -273,6 +284,10 @@ class ExcelBatchReader:
         self.excel = win32.DispatchEx("Excel.Application")
         self.excel.Visible = bool(self.visible)
         self.excel.DisplayAlerts = False
+        try:
+            self.excel.Interactive = False
+        except Exception:
+            pass
         self.excel.AskToUpdateLinks = False
         self.excel.EnableEvents = False
         self.excel.ScreenUpdating = False
@@ -297,6 +312,8 @@ class ExcelBatchReader:
         except Exception:
             pass
         finally:
+            if self.excel is not None:
+                del self.excel
             self.excel = None
 
         try:
@@ -306,6 +323,9 @@ class ExcelBatchReader:
             pass
         finally:
             self._pythoncom = None
+
+        import gc
+        gc.collect()
 
     def _require_open(self) -> None:
         if self.excel is None:
