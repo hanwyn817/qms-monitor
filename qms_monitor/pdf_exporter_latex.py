@@ -78,18 +78,18 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
     mainfont = _pick_existing_font(
         available_fonts,
         os.getenv("QMS_LATEX_MAINFONT", "").strip(),
-        "Microsoft YaHei" if is_win else "PingFang SC",
-        "SimSun" if is_win else "Songti SC",
-        "PingFang SC" if is_win else "Microsoft YaHei",
+        "SimSun" if is_win else "PingFang SC",
+        "Times New Roman" if is_win else "Songti SC",
+        "Microsoft YaHei" if is_win else "Microsoft YaHei",
         "Heiti SC",
         "Arial Unicode MS",
     )
     sansfont = _pick_existing_font(
         available_fonts,
         os.getenv("QMS_LATEX_SANSFONT", "").strip(),
-        "Microsoft YaHei" if is_win else "Helvetica Neue",
-        "SimSun" if is_win else "PingFang SC",
-        "PingFang SC" if is_win else "Microsoft YaHei",
+        "SimSun" if is_win else "Helvetica Neue",
+        "Times New Roman" if is_win else "PingFang SC",
+        "Microsoft YaHei" if is_win else "Microsoft YaHei",
         "Helvetica",
     )
     monofont = _pick_existing_font(
