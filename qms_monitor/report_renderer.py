@@ -34,7 +34,9 @@ def _chunk_text_for_table(text: str, max_len: int = 24) -> list[str]:
 
 
 def format_summary_cell(value: Any) -> str:
-    raw = str(value or "").strip()
+    if value is None:
+        return "-"
+    raw = str(value).strip()
     if not raw:
         return "-"
 

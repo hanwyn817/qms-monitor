@@ -13,6 +13,7 @@ def _list_available_fonts() -> set[str]:
             ["fc-list", ":", "family"],
             capture_output=True,
             text=True,
+            encoding='utf-8',
             check=False,
         )
     except Exception:
@@ -129,11 +130,11 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
         base_cmd.append("--variable=monofont:" + monofont)
     styled_cmd = [*base_cmd, "--include-in-header", str(header_path)]
 
-    proc = subprocess.run(styled_cmd, capture_output=True, text=True)
+    proc = subprocess.run(styled_cmd, capture_output=True, text=True, encoding='utf-8')
     if proc.returncode == 0:
         return LatexExportResult(mode="styled")
 
-    fallback_proc = subprocess.run(base_cmd, capture_output=True, text=True)
+    fallback_proc = subprocess.run(base_cmd, capture_output=True, text=True, encoding='utf-8')
     if fallback_proc.returncode == 0:
         reason = _compact_error_text(proc.stderr, proc.stdout)
         return LatexExportResult(mode="plain", fallback_reason=reason)
