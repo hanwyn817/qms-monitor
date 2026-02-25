@@ -82,13 +82,22 @@ def render_markdown_report(
 ) -> str:
     lines: list[str] = []
     lines.append("")
-    lines.append(f"- 报告日期: {report_date.isoformat()}")
-    lines.append(f"- 配置文件: {config_path}")
-    lines.append(f"- 成功读取台账: {processed_files}")
-    lines.append(f"- 跳过台账: {skipped_files}")
-    lines.append("")
-
     lines.append("# 质量体系运行总结")
+
+    topics = "、".join(topic for topic in sorted(topic_results.keys()))
+    if not topics:
+        topics = "各相关"
+
+    overview_text = (
+        f"本次质量体系运行情况汇总截止于 {report_date.isoformat()}，"
+        f"对 {topics} 等模块进行了数据统计和分析，"
+        f"涉及台账电子表格共 {processed_files} 份，各主题和各年份的事件分布和超期情况见下表。"
+    )
+    if skipped_files > 0:
+        overview_text += f"（注：跳过解析异常或无数据的台账 {skipped_files} 份）"
+
+    lines.append(overview_text)
+    lines.append("")
     summary_rows: list[tuple[str, str, int, int, Any]] = []
     for topic in sorted(topic_results.keys()):
         item = topic_results[topic]
