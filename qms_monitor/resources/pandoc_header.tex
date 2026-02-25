@@ -20,10 +20,12 @@
 \definecolor{qmsink}{HTML}{1F2937}
 \definecolor{qmsmuted}{HTML}{6B7280}
 \definecolor{qmsline}{HTML}{E5E7EB}
+\definecolor{qmstablehead}{HTML}{E8F0F8}
+\definecolor{qmstablezebra}{HTML}{F8FAFC}
 
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{0.55em}
-\linespread{1.2}
+\setlength{\parskip}{0.8em}
+\linespread{1.35}
 \setlength{\headheight}{14pt}
 \setlength{\emergencystretch}{6em}
 \setlength{\rightskip}{0pt plus 0.8em}
@@ -60,42 +62,55 @@
   }
 }{}
 
-\renewcommand{\arraystretch}{1.25}
-\setlength{\LTpre}{0.4em}
-\setlength{\LTpost}{0.8em}
+\IfFileExists{colortbl.sty}{\usepackage{colortbl}}{}
+\renewcommand{\arraystretch}{1.4}
+\setlength{\LTpre}{0.6em}
+\setlength{\LTpost}{1.0em}
 
 \IfFileExists{titlesec.sty}{
   \titleformat{\section}
-    {\Large\bfseries\color{qmsink}}
+    {\Large\bfseries\color{qmsblue}}
     {\thesection}
     {0.7em}
     {}
-  \titlespacing*{\section}{0pt}{1.4em}{0.6em}
+  \titlespacing*{\section}{0pt}{1.8em}{0.8em}
 
   \titleformat{\subsection}
     {\large\bfseries\color{qmsink}}
     {\thesubsection}
     {0.6em}
     {}
-  \titlespacing*{\subsection}{0pt}{1.1em}{0.45em}
+  \titlespacing*{\subsection}{0pt}{1.4em}{0.6em}
 
   \titleformat{\subsubsection}
-    {\normalsize\bfseries\color{qmsmuted}}
+    {\normalsize\bfseries\color{qmsblue}}
     {\thesubsubsection}
     {0.55em}
     {}
-  \titlespacing*{\subsubsection}{0pt}{0.9em}{0.35em}
+  \titlespacing*{\subsubsection}{0pt}{1.0em}{0.4em}
 }{}
 
+\IfFileExists{lastpage.sty}{\usepackage{lastpage}}{}
 \IfFileExists{fancyhdr.sty}{
   \pagestyle{fancy}
   \fancyhf{}
   \fancyhead[L]{\color{qmsmuted}\footnotesize 质量体系运行报告}
-  \fancyhead[R]{\color{qmsmuted}\footnotesize QMS Monitor}
+  \fancyhead[R]{\color{qmsmuted}\footnotesize \textbf{QMS Monitor}}
   \fancyfoot[C]{\color{qmsmuted}\footnotesize \thepage}
-  \renewcommand{\headrulewidth}{0.4pt}
-  \renewcommand{\headrule}{\hbox to\headwidth{\color{qmsline}\leaders\hrule height \headrulewidth\hfill}}
+  \renewcommand{\headrulewidth}{0.8pt}
+  \renewcommand{\headrule}{\hbox to\headwidth{\color{qmsblue}\leaders\hrule height \headrulewidth\hfill}}
   \renewcommand{\footrulewidth}{0pt}
+}{}
+
+\IfFileExists{tocloft.sty}{
+  \usepackage{tocloft}
+  \renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries\color{qmsblue}}
+  \renewcommand{\cftaftertoctitle}{\hfill\mbox{}\\[1em]}
+  \renewcommand{\cftsecfont}{\bfseries\color{qmsink}}
+  \renewcommand{\cftsecpagefont}{\bfseries\color{qmsblue}}
+  \renewcommand{\cftsecleader}{\color{qmsline}\cftdotfill{\cftdotsep}}
+  \setlength{\cftbeforesecskip}{0.8em}
+  \setlength{\cftbeforesubsecskip}{0.3em}
 }{}
 
 % Avoid code block overflow on narrow pages

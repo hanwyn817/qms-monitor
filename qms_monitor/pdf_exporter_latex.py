@@ -111,6 +111,7 @@ def export_markdown_file_to_pdf_latex(markdown_path: Path, output_path: Path) ->
         "--toc",
         "--toc-depth=2",
         "--number-sections",
+        "--variable=toc-title:目录",
         "--metadata=title:质量体系运行报告",
         "--variable=documentclass:article",
         "--variable=geometry:margin=22mm",
