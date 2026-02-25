@@ -4,7 +4,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-MAX_RANK_TABLE_ROWS = 15
+MAX_RANK_TABLE_ROWS = 10
 MAX_OWNER_RANK_TABLE_ROWS = 10
 
 
@@ -124,35 +124,30 @@ def render_markdown_report(
 
         yearly_totals = item.get("yearly_totals", [])
 
+        total = item.get("total", {})
+        total_count = total.get("count")
+        if total_count is None:
+            total_count = sum(int(r.get("count", 0) or 0) for r in yearly_totals)
+        overdue = item.get("overdue", {})
+
         yearly_overdue = item.get("yearly_overdue", [])
         lines.append("## 各年度超期情况")
-        if yearly_overdue:
-            yearly_overdue_sorted = sorted(yearly_overdue, key=lambda row: str(row.get("year", "")), reverse=True)
+        if yearly_overdue or total_count:
+            yearly_overdue_sorted = sorted(yearly_overdue, key=lambda row: str(row.get("year", "")), reverse=True) if yearly_overdue else []
             lines.append("| 年份 | 起数 | 超期起数 | 超期占比 |")
             lines.append("|---|---:|---:|---:|")
             for row in yearly_overdue_sorted:
                 lines.append(
                     f"| {row.get('year', '')} | {row.get('count', 0)} | {row.get('overdue_count', 0)} | {row.get('overdue_ratio', 0)}% |"
                 )
+            lines.append(f"| **总计** | **{total_count}** | **{overdue.get('count', 0)}** | **{overdue.get('ratio', 0)}%** |")
         else:
             lines.append("无可统计数据")
         lines.append("")
 
-        total = item.get("total", {})
-        total_count = total.get("count")
-        if total_count is None:
-            total_count = sum(int(r.get("count", 0) or 0) for r in yearly_totals)
-        lines.append("## 总起数和超期情况")
-        lines.append(f"- 总起数: {total_count}")
-
-        overdue = item.get("overdue", {})
-        lines.append(f"- 总超期起数: {overdue.get('count', 0)}")
-        lines.append(f"- 总超期占比: {overdue.get('ratio', 0)}%")
-        lines.append("")
-
-        lines.append("## 超期按分管QA统计（降序）")
         qa_rank = item.get("overdue_by_qa", [])
         if qa_rank:
+            lines.append("## 超期按分管QA统计")
             qa_table_rows, qa_overflow_rows = split_rank_rows(qa_rank)
             lines.append("| 分管QA | 起数 | 超期内容概括 |")
             lines.append("|---|---:|---|")
@@ -163,13 +158,11 @@ def render_markdown_report(
             if overflow_note:
                 lines.append("")
                 lines.append(overflow_note)
-        else:
-            lines.append("无可统计数据")
-        lines.append("")
+            lines.append("")
 
-        lines.append("## 超期按分管QA中层统计（降序）")
         qa_manager_rank = item.get("overdue_by_qa_manager", [])
         if qa_manager_rank:
+            lines.append("## 超期按分管QA中层统计")
             qa_manager_table_rows, qa_manager_overflow_rows = split_rank_rows(qa_manager_rank)
             lines.append("| 分管QA中层 | 起数 | 超期内容概括 |")
             lines.append("|---|---:|---|")
@@ -180,13 +173,11 @@ def render_markdown_report(
             if overflow_note:
                 lines.append("")
                 lines.append(overflow_note)
-        else:
-            lines.append("无可统计数据（可能配置中缺失分管QA中层列）")
-        lines.append("")
+            lines.append("")
 
-        lines.append("## 超期按责任部门统计（降序）")
         owner_dept_rank = item.get("overdue_by_owner_dept", [])
         if owner_dept_rank:
+            lines.append("## 超期按责任部门统计")
             owner_dept_table_rows, owner_dept_overflow_rows = split_rank_rows(owner_dept_rank)
             lines.append("| 责任部门 | 起数 |")
             lines.append("|---|---:|")
@@ -196,21 +187,17 @@ def render_markdown_report(
             if overflow_note:
                 lines.append("")
                 lines.append(overflow_note)
-        else:
-            lines.append("无可统计数据")
-        lines.append("")
+            lines.append("")
 
-        lines.append("## 超期按责任人统计（降序，仅前10）")
         owner_rank = item.get("overdue_by_owner", [])
         if owner_rank:
+            lines.append("## 超期按责任人统计（仅前10）")
             owner_table_rows, _ = split_rank_rows(owner_rank, max_rows=MAX_OWNER_RANK_TABLE_ROWS)
             lines.append("| 责任人 | 起数 |")
             lines.append("|---|---:|")
             for row in owner_table_rows:
                 lines.append(f"| {safe_md_cell(row.get('name', ''))} | {row.get('count', 0)} |")
-        else:
-            lines.append("无可统计数据")
-        lines.append("")
+            lines.append("")
 
         lines.append("## 总结")
         summary = (item.get("summary") or "").strip()
